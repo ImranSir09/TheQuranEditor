@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#022c22" />
+      <stop offset="50%" stop-color="#064e3b" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="50%" stop-color="#eab308" />
+      <stop offset="100%" stop-color="#ca8a04" />
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#10b981" stop-opacity="0.3" />
+      <stop offset="100%" stop-color="#10b981" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background rounded squircle / Android adaptive icon boundary -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <circle cx="256" cy="256" r="210" fill="url(#glow)" />
+
+  <!-- Outer Islamic 8-Point Star Geometry Outline (Subtle) -->
+  <g transform="translate(256, 256) scale(0.85)" opacity="0.25">
+    <rect x="-140" y="-140" width="280" height="280" rx="16" fill="none" stroke="#fef08a" stroke-width="3" />
+    <rect x="-140" y="-140" width="280" height="280" rx="16" fill="none" stroke="#fef08a" stroke-width="3" transform="rotate(45)" />
+  </g>
+
+  <!-- Quran Rehal (Book Stand) & Open Book Symbol -->
+  <g transform="translate(256, 256)" stroke="url(#goldGrad)" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <!-- Left Page of Holy Quran -->
+    <path d="M-10,-40 C-60,-75 -130,-70 -140,-35 C-145,15 -140,75 -140,85 C-130,55 -60,50 -10,80 Z" fill="#042f2e" fill-opacity="0.8" />
+    <!-- Right Page of Holy Quran -->
+    <path d="M10,-40 C60,-75 130,-70 140,-35 C145,15 140,75 140,85 C130,55 60,50 10,80 Z" fill="#042f2e" fill-opacity="0.8" />
+    <!-- Center Spine Binding -->
+    <path d="M0,-35 L0,85" stroke-width="8" stroke="#fef08a" />
+    
+    <!-- Script lines on pages (aesthetic lines) -->
+    <path d="M-115,-15 C-80,-25 -40,-15 -30,-5" stroke="#fde047" stroke-width="5" opacity="0.75" />
+    <path d="M-115,15 C-80,5 -40,15 -30,25" stroke="#fde047" stroke-width="5" opacity="0.75" />
+    <path d="M-110,45 C-80,35 -40,45 -30,55" stroke="#fde047" stroke-width="5" opacity="0.75" />
+    
+    <path d="M115,-15 C80,-25 40,-15 30,-5" stroke="#fde047" stroke-width="5" opacity="0.75" />
+    <path d="M115,15 C80,5 40,15 30,25" stroke="#fde047" stroke-width="5" opacity="0.75" />
+    <path d="M110,45 C80,35 40,45 30,55" stroke="#fde047" stroke-width="5" opacity="0.75" />
+
+    <!-- Rehal wooden stand crossed legs -->
+    <path d="M-105,75 L-40,140 L0,105 L40,140 L105,75" stroke-width="12" />
+    <path d="M-70,110 L-95,145" stroke-width="10" />
+    <path d="M70,110 L95,145" stroke-width="10" />
+
+    <!-- Divine Crescent Moon & Star at Top -->
+    <path d="M-15,-90 A25,25 0 1,1 22,-65 A18,18 0 1,0 -15,-90 Z" fill="url(#goldGrad)" stroke="none" />
+    <polygon points="12,-85 16,-75 26,-75 18,-69 21,-59 12,-65 3,-59 6,-69 -2,-75 8,-75" fill="#fef08a" stroke="none" transform="scale(0.55) translate(22, -15)" />
+  </g>
+</svg>
