@@ -17,7 +17,8 @@ import {
   Minus, 
   Plus,
   Share2,
-  Sliders
+  Sliders,
+  FolderDown
 } from 'lucide-react';
 import { toPng, toJpeg } from 'html-to-image';
 import { SurahInfo, AyahData, AspectRatioKey, QuickPreset } from '../types';
@@ -29,7 +30,10 @@ import {
   initCapacitorApp, 
   listenToHardwareBack, 
   triggerHaptic, 
-  shareVerseImage 
+  shareVerseImage,
+  saveImageFile,
+  saveViaSystemPicker,
+  isNativePlatform
 } from '../utils/native';
 
 type ActiveTool = 'none' | 'palette' | 'ratio' | 'type' | 'languages' | 'frame' | 'range' | 'presets' | 'export';
@@ -286,23 +290,38 @@ export default function QuranGenerator() {
   };
 
   // Export card as image
-  const handleExport = async (format: 'png' | 'jpeg') => {
+  const handleExport = async (format: 'png' | 'jpeg', mode: 'direct' | 'system' = 'direct') => {
     triggerHaptic();
     setExporting(true);
 
     try {
       const dataUrl = await generateImageDataUrl(format);
-      if (!dataUrl) return;
+      if (!dataUrl) {
+        showToast('Failed to render image');
+        return;
+      }
 
-      const link = document.createElement('a');
-      const filename = `Quran_${selectedSurah?.englishName || 'Verse'}_${startAyah}${
+      const surahNameClean = (selectedSurah?.englishName || 'Verse').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Quran_${surahNameClean}_${startAyah}${
         startAyah !== endAyah ? `-${endAyah}` : ''
       }.${format}`;
-      link.download = filename;
-      link.href = dataUrl;
-      link.click();
-      setActiveTool('none');
-      showToast(`Exported ${format.toUpperCase()}`);
+
+      if (mode === 'system' && isNativePlatform()) {
+        const opened = await saveViaSystemPicker({ dataUrl, filename });
+        if (opened) {
+          showToast('Choose destination in system menu');
+          setActiveTool('none');
+          return;
+        }
+      }
+
+      const result = await saveImageFile({ dataUrl, filename });
+      if (result.success) {
+        showToast(result.message);
+        setActiveTool('none');
+      } else {
+        showToast(result.message || 'Export failed');
+      }
     } catch (err) {
       console.error('Export failed:', err);
       showToast('Export failed. Please try again.');
@@ -321,7 +340,8 @@ export default function QuranGenerator() {
       const verseRef = `Surah ${selectedSurah?.englishName || 'Quran'} (${selectedSurah?.number || 1}:${startAyah}${
         startAyah !== endAyah ? `-${endAyah}` : ''
       })`;
-      const filename = `Quran_${selectedSurah?.englishName || 'Verse'}_${startAyah}.png`;
+      const surahNameClean = (selectedSurah?.englishName || 'Verse').replace(/[^a-zA-Z0-9_-]/g, '_');
+      const filename = `Quran_${surahNameClean}_${startAyah}.png`;
 
       const shared = await shareVerseImage({
         title: 'Quran Verse',
@@ -333,9 +353,10 @@ export default function QuranGenerator() {
       if (shared) {
         showToast('Shared successfully!');
         setActiveTool('none');
-      } else {
-        // If native/web share was dismissed or unsupported, trigger direct download
-        await handleExport('png');
+      } else if (dataUrl) {
+        // Fallback: direct save to files
+        const saveRes = await saveImageFile({ dataUrl, filename });
+        showToast(saveRes.message);
       }
     } catch (err) {
       console.error('Share failed:', err);
@@ -897,42 +918,93 @@ export default function QuranGenerator() {
 
           {/* TOOL 8: EXPORT */}
           {activeTool === 'export' && (
-            <div className="space-y-2.5">
-              {/* Native / Web Share Button */}
-              <button
-                onClick={handleShare}
-                disabled={exporting || loadingAyahs}
-                className="w-full py-3 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 disabled:opacity-50"
-              >
-                {exporting ? <RotateCw className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-                Share Verse Card (WhatsApp, Stories, Apps)
-              </button>
+            <div className="space-y-3">
+              {/* Header label with storage target status */}
+              <div className="flex items-center justify-between text-[11px] text-slate-400 px-0.5">
+                <span className="font-medium">Save to Files & Downloads</span>
+                <span className="text-[10px] text-emerald-400 font-mono bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                  {isNativePlatform() ? 'Documents Folder' : 'Direct Download'}
+                </span>
+              </div>
 
-              <div className="grid grid-cols-2 gap-2.5">
+              {/* Primary: Direct Save PNG / JPG */}
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => handleExport('png')}
+                  onClick={() => handleExport('png', 'direct')}
                   disabled={exporting || loadingAyahs}
-                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="py-3 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs transition flex flex-col items-center justify-center gap-1 shadow-md shadow-emerald-950/60 disabled:opacity-50"
+                  title="Save high resolution PNG into device Documents / Downloads"
                 >
-                  {exporting ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  Download PNG
+                  {exporting ? (
+                    <RotateCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span className="font-bold">Save PNG</span>
+                  <span className="text-[10px] font-normal opacity-85">Lossless Quality</span>
                 </button>
+
                 <button
-                  onClick={() => handleExport('jpeg')}
+                  onClick={() => handleExport('jpeg', 'direct')}
                   disabled={exporting || loadingAyahs}
-                  className="py-2.5 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-semibold text-xs transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="py-3 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-100 font-semibold text-xs transition flex flex-col items-center justify-center gap-1 disabled:opacity-50"
+                  title="Save compressed JPG into device Documents / Downloads"
                 >
-                  {exporting ? <RotateCw className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                  Download JPG
+                  {exporting ? (
+                    <RotateCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 text-emerald-400" />
+                  )}
+                  <span className="font-bold">Save JPG</span>
+                  <span className="text-[10px] font-normal text-slate-400">Smaller File Size</span>
                 </button>
               </div>
 
+              {/* Secondary Options: System Folder Picker / Share Image */}
+              <div className="grid grid-cols-2 gap-2">
+                {isNativePlatform() ? (
+                  <button
+                    onClick={() => handleExport('png', 'system')}
+                    disabled={exporting || loadingAyahs}
+                    className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                    title="Choose folder or Downloads via Android system sheet"
+                  >
+                    <FolderDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Choose Folder</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleExport('png', 'direct')}
+                    disabled={exporting || loadingAyahs}
+                    className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    <FolderDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span>Downloads</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={handleShare}
+                  disabled={exporting || loadingAyahs}
+                  className="py-2.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-medium transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  title="Share image file to WhatsApp, Stories, etc."
+                >
+                  {exporting ? (
+                    <RotateCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Share2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  )}
+                  <span>Share Image</span>
+                </button>
+              </div>
+
+              {/* Copy Formatted Text */}
               <button
                 onClick={handleCopyText}
-                className="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-medium transition flex items-center justify-center gap-2"
+                className="w-full py-2 px-3 rounded-xl bg-slate-800/50 hover:bg-slate-800/80 border border-slate-700/50 text-slate-300 text-xs font-medium transition flex items-center justify-center gap-2"
               >
-                <Copy className="w-3.5 h-3.5" />
-                Copy Formatted Text
+                <Copy className="w-3.5 h-3.5 text-slate-400" />
+                Copy Formatted Text Only
               </button>
             </div>
           )}
