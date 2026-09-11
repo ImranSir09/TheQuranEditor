@@ -15,6 +15,7 @@ export const initCapacitorApp = async () => {
     try {
       await StatusBar.setStyle({ style: Style.Dark });
       await StatusBar.setBackgroundColor({ color: '#020617' });
+      await StatusBar.setOverlaysWebView({ overlay: false });
     } catch {
       // ignore on unsupported devices
     }

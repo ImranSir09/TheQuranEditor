@@ -1,4 +1,43 @@
-import { AspectRatioKey, RatioConfig, ThemeConfig, QuickPreset } from '../types';
+import { AspectRatioKey, BismillahStyle, RatioConfig, ThemeConfig, QuickPreset } from '../types';
+
+export interface BismillahConfig {
+  id: BismillahStyle;
+  label: string;
+  shortLabel: string;
+  arabicText: string;
+  subtitle?: string;
+}
+
+export const BISMILLAH_STYLES: BismillahConfig[] = [
+  {
+    id: 'classic',
+    label: 'Classic Uthmani',
+    shortLabel: 'Uthmani',
+    arabicText: 'بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ',
+    subtitle: 'Standard full verse calligraphic text',
+  },
+  {
+    id: 'ornamental',
+    label: 'Calligraphic Ligature (﷽)',
+    shortLabel: 'Ligature ﷽',
+    arabicText: '﷽',
+    subtitle: 'Sacred single-glyph Basmala emblem',
+  },
+  {
+    id: 'framed',
+    label: 'Framed Arabesque',
+    shortLabel: 'Framed ۞',
+    arabicText: '۞ بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۞',
+    subtitle: 'Enclosed with ornamental Quranic stars',
+  },
+  {
+    id: 'minimal',
+    label: 'Clean Script',
+    shortLabel: 'Simple',
+    arabicText: 'بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ',
+    subtitle: 'Modern simplified Arabic typography',
+  },
+];
 
 export const RATIO_CONFIGS: Record<AspectRatioKey, RatioConfig> = {
   '1:1': {

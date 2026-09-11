@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
-import { SurahInfo, AyahData, ThemeConfig, AspectRatioKey } from '../types';
+import { SurahInfo, AyahData, ThemeConfig, AspectRatioKey, BismillahStyle } from '../types';
+import { stripBismillah } from '../utils/arabicText';
 
 interface QuranCardProps {
   surah: SurahInfo | null;
@@ -9,6 +10,7 @@ interface QuranCardProps {
   borderStyle: 'gold' | 'minimal' | 'rounded' | 'none';
   marginSize: number;
   showBismillah: boolean;
+  bismillahStyle?: BismillahStyle;
   showArabic: boolean;
   showEnglish: boolean;
   showUrdu: boolean;
@@ -35,6 +37,7 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
     borderStyle,
     marginSize,
     showBismillah,
+    bismillahStyle = 'classic',
     showArabic,
     showEnglish,
     showUrdu,
@@ -55,7 +58,90 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
   ref
 ) {
   const isSurahTawbah = surah?.number === 9;
-  const shouldRenderBismillah = showBismillah && !isSurahTawbah;
+  const isSurahFatihah = surah?.number === 1;
+
+  // Render Bismillah header if enabled, style is not none, and not Surah At-Tawbah
+  const shouldRenderBismillah =
+    showBismillah &&
+    bismillahStyle !== 'none' &&
+    !isSurahTawbah;
+
+  // Consistent Arabic font family resolution
+  const getArabicFontFamily = (font: string) => {
+    if (font === 'Scheherazade New') return "'Scheherazade New', serif";
+    if (font === 'Lateef') return "'Lateef', serif";
+    return "'Amiri', serif";
+  };
+
+  const arabicFontFamily = getArabicFontFamily(arabicFont);
+
+  // Filter ayahs so Surah 1 never duplicates Bismillah in both header and body.
+  // When Bismillah header is shown, Ayah 1 is presented through the header.
+  const displayAyahs = ayahs.filter((ayah) => {
+    if (isSurahFatihah && shouldRenderBismillah && ayah.numberInSurah === 1 && ayahs.length > 1) {
+      return false;
+    }
+    return true;
+  });
+
+  // Clean Arabic text so verse body never contains a duplicated Bismillah
+  const getCleanArabicText = (ayah: AyahData) => {
+    if (isSurahFatihah) {
+      if (shouldRenderBismillah && ayah.numberInSurah === 1) {
+        return '';
+      }
+      return ayah.arabicText.trim();
+    }
+    // For Surahs 2-114, always strip the Bismillah prefix from Ayah 1
+    return stripBismillah(ayah.arabicText);
+  };
+
+  const renderBismillahContent = () => {
+    switch (bismillahStyle) {
+      case 'ornamental':
+        return (
+          <div
+            dir="rtl"
+            style={{ fontFamily: arabicFontFamily }}
+            className="w-full text-center text-2xl sm:text-3xl font-bold opacity-90 pb-2 border-b border-white/10 select-none tracking-normal"
+            title="Bismillah Ligature"
+          >
+            ﷽
+          </div>
+        );
+      case 'framed':
+        return (
+          <div
+            dir="rtl"
+            style={{ fontFamily: arabicFontFamily }}
+            className="w-full text-center text-sm sm:text-base font-bold opacity-85 pb-1.5 border-b border-white/10 tracking-wide"
+          >
+            ۞ بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ ۞
+          </div>
+        );
+      case 'minimal':
+        return (
+          <div
+            dir="rtl"
+            style={{ fontFamily: arabicFontFamily }}
+            className="w-full text-center text-base sm:text-lg font-medium opacity-85 pb-1.5 border-b border-white/10"
+          >
+            بِسْمِ اللهِ الرَّحْمٰنِ الرَّحِيْمِ
+          </div>
+        );
+      case 'classic':
+      default:
+        return (
+          <div
+            dir="rtl"
+            style={{ fontFamily: arabicFontFamily }}
+            className="w-full text-center text-base sm:text-lg font-bold opacity-90 pb-1.5 border-b border-white/10"
+          >
+            بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
+          </div>
+        );
+    }
+  };
 
   return (
     <div
@@ -129,15 +215,7 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
         ) : (
           <div className="space-y-4 w-full">
             {/* Optional Bismillah */}
-            {shouldRenderBismillah && (
-              <div 
-                dir="rtl"
-                style={{ fontFamily: "'Amiri', serif" }}
-                className="w-full text-center text-lg sm:text-xl font-bold opacity-85 pb-1 border-b border-white/10"
-              >
-                بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ
-              </div>
-            )}
+            {shouldRenderBismillah && renderBismillahContent()}
 
             {/* Arabic Uthmani Text */}
             {showArabic && (
@@ -146,29 +224,33 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
                 style={{
                   fontSize: `${arabicFontSize}px`,
                   lineHeight: arabicLineSpacing,
-                  fontFamily: arabicFont === 'Scheherazade New' ? "'Scheherazade New', serif" : "'Amiri', serif",
+                  fontFamily: arabicFontFamily,
                   textAlign: arabicAlign,
                 }}
                 className={`w-full font-bold tracking-wide drop-shadow-xs ${
                   arabicAlign === 'center' ? 'text-center' : arabicAlign === 'left' ? 'text-left' : 'text-right'
                 }`}
               >
-                {ayahs.map((ayah) => (
-                  <span key={ayah.number} className="inline">
-                    {ayah.arabicText}{' '}
-                    <span 
-                      style={{ color: theme.accentColor }} 
-                      className="inline-block font-sans text-xs sm:text-sm mx-1 px-1.5 py-0.5 rounded-full border border-current/30 align-middle font-medium"
-                    >
-                      ﴿{ayah.numberInSurah}﴾
-                    </span>{' '}
-                  </span>
-                ))}
+                {displayAyahs.map((ayah) => {
+                  const cleanText = getCleanArabicText(ayah);
+                  if (!cleanText) return null;
+                  return (
+                    <span key={ayah.number} className="inline">
+                      {cleanText}{' '}
+                      <span 
+                        style={{ color: theme.accentColor }} 
+                        className="inline-block font-sans text-xs sm:text-sm mx-1 px-1.5 py-0.5 rounded-full border border-current/30 align-middle font-medium"
+                      >
+                        ﴿{ayah.numberInSurah}﴾
+                      </span>{' '}
+                    </span>
+                  );
+                })}
               </div>
             )}
 
             {/* Urdu Translation */}
-            {showUrdu && ayahs[0]?.urduText && (
+            {showUrdu && displayAyahs[0]?.urduText && (
               <div
                 dir="rtl"
                 style={{
@@ -182,7 +264,7 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
                 }`}
               >
                 <p>
-                  {ayahs.map((a) => (
+                  {displayAyahs.map((a) => (
                     <span key={a.number}>
                       {a.urduText}{' '}
                       <span className="text-xs opacity-60 font-sans">({a.numberInSurah})</span>{' '}
@@ -193,7 +275,7 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
             )}
 
             {/* English Translation */}
-            {showEnglish && ayahs[0]?.englishText && (
+            {showEnglish && displayAyahs[0]?.englishText && (
               <div
                 style={{
                   fontSize: `${englishFontSize}px`,
@@ -205,7 +287,7 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
                 }`}
               >
                 <p>
-                  {ayahs.map((a) => (
+                  {displayAyahs.map((a) => (
                     <span key={a.number}>
                       {a.englishText}{' '}
                       <span className="text-[11px] opacity-60 font-mono">[{a.numberInSurah}]</span>{' '}

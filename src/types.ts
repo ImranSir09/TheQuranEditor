@@ -19,6 +19,8 @@ export interface AyahData {
 
 export type AspectRatioKey = '1:1' | '4:5' | '9:16' | '16:9' | '3:4';
 
+export type BismillahStyle = 'classic' | 'ornamental' | 'framed' | 'minimal' | 'none';
+
 export interface RatioConfig {
   label: string;
   shortLabel: string;
