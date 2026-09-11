@@ -1,6 +1,6 @@
 {
   "name": "Quran Editor",
-  "description": "Touch-ready mobile Quran verse editor with non-scrolling interface, icon-only formatting dock, and verified Uthmani calligraphy.",
+  "description": "Touch-ready mobile Quran image and video creation studio with verified Uthmani calligraphy, recitation synchronization, and multi-track video timeline.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
