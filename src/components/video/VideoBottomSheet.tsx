@@ -145,9 +145,27 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
   if (activeTab === 'none') return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 bg-slate-900 border-t border-slate-800/90 rounded-t-2xl shadow-2xl flex flex-col max-h-[70vh] animate-in slide-in-from-bottom duration-200">
-      {/* Visual drag pill handle */}
-      <div className="w-10 h-1 bg-slate-700/80 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
+    <>
+      {/* Backdrop overlay for dismissing sheet */}
+      <div 
+        className="fixed inset-0 z-25 bg-black/50 backdrop-blur-xs animate-in fade-in duration-150"
+        onClick={() => {
+          triggerHaptic();
+          onClose();
+        }}
+      />
+
+      <div className="absolute inset-x-0 bottom-0 z-30 bg-slate-900 border-t border-slate-800/90 rounded-t-2xl shadow-2xl flex flex-col max-h-[72vh] animate-in slide-in-from-bottom duration-200">
+        {/* Visual drag pill handle */}
+        <div 
+          onClick={() => {
+            triggerHaptic();
+            onClose();
+          }}
+          className="w-full pt-2.5 pb-1 flex justify-center cursor-pointer active:opacity-60"
+        >
+          <div className="w-10 h-1 bg-slate-600 rounded-full" />
+        </div>
 
       {/* Drawer Header */}
       <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/80 shrink-0">
@@ -791,5 +809,6 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
         )}
       </div>
     </div>
+    </>
   );
 };

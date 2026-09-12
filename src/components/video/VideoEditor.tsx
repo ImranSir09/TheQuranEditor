@@ -42,9 +42,10 @@ import {
 
 interface VideoEditorProps {
   initialSurah?: SurahInfo | null;
+  isActive?: boolean;
 }
 
-export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
+export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive = true }) => {
   // Surah & Verse selection state
   const [surahs, setSurahs] = useState<SurahInfo[]>([]);
   const [selectedSurah, setSelectedSurah] = useState<SurahInfo | null>(null);
@@ -332,6 +333,39 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
       audio?.pause();
     };
   }, [audioUrl, clipOffsetSeconds, duration]);
+
+  // Pause audio recitation if user switches to Poster mode
+  useEffect(() => {
+    if (!isActive && isPlaying) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      setIsPlaying(false);
+    }
+  }, [isActive, isPlaying]);
+
+  // 60FPS high-precision synchronization clock for buttery smooth timeline playhead, waveform, and word highlighting
+  useEffect(() => {
+    if (!isPlaying) return;
+    let animId: number;
+
+    const tick = () => {
+      const audio = audioRef.current;
+      if (audio && !audio.paused) {
+        const rel = Math.max(0, audio.currentTime - clipOffsetSeconds);
+        setCurrentTime(rel);
+
+        if (rel >= duration && duration > 0) {
+          audio.currentTime = clipOffsetSeconds;
+          setCurrentTime(0);
+        }
+      }
+      animId = requestAnimationFrame(tick);
+    };
+
+    animId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(animId);
+  }, [isPlaying, clipOffsetSeconds, duration]);
 
   // Toggle Play / Pause
   const handleTogglePlay = useCallback(() => {

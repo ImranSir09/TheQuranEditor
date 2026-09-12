@@ -81,7 +81,7 @@ export default function App() {
             <QuranGenerator />
           </div>
           <div className={`w-full h-full ${activeTab === 'video' ? 'block' : 'hidden'}`}>
-            <VideoEditor />
+            <VideoEditor isActive={activeTab === 'video'} />
           </div>
         </div>
       </div>

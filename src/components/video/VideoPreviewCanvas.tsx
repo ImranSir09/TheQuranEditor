@@ -137,7 +137,72 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
     }
   }, [customBgUrl, customBgType]);
 
-  // Main rendering loop for canvas
+  // Maintain latest render state in ref to avoid tearing down 60fps canvas loop on state changes
+  const stateRef = useRef({
+    aspectRatio,
+    surah,
+    ayahs,
+    currentAyahIndex,
+    activeWordPosition,
+    theme,
+    customBgUrl,
+    customBgType,
+    bgOverlayOpacity,
+    arabicFont,
+    arabicFontSize,
+    arabicLineSpacing,
+    arabicAlign,
+    showTranslation,
+    translationLang,
+    translationFontSize,
+    wordHighlightColor,
+    animationType,
+    waveformEnabled,
+    waveformStyle,
+    waveformData,
+    currentTime,
+    duration,
+    isPlaying,
+    showReference,
+    showBismillah,
+    bismillahStyle,
+    watermarkEnabled,
+    watermarkStyle,
+  });
+
+  stateRef.current = {
+    aspectRatio,
+    surah,
+    ayahs,
+    currentAyahIndex,
+    activeWordPosition,
+    theme,
+    customBgUrl,
+    customBgType,
+    bgOverlayOpacity,
+    arabicFont,
+    arabicFontSize,
+    arabicLineSpacing,
+    arabicAlign,
+    showTranslation,
+    translationLang,
+    translationFontSize,
+    wordHighlightColor,
+    animationType,
+    waveformEnabled,
+    waveformStyle,
+    waveformData,
+    currentTime,
+    duration,
+    isPlaying,
+    showReference,
+    showBismillah,
+    bismillahStyle,
+    watermarkEnabled,
+    watermarkStyle,
+  };
+
+  // Main rendering loop for canvas: runs continuously at 60fps without React effect churn
   useEffect(() => {
     let animationFrameId: number;
     const canvas = canvasRef.current;
@@ -146,6 +211,33 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
     if (!ctx) return;
 
     const renderFrame = () => {
+      const {
+        aspectRatio,
+        surah,
+        ayahs,
+        currentAyahIndex,
+        activeWordPosition,
+        theme,
+        customBgType,
+        bgOverlayOpacity,
+        arabicFont,
+        arabicFontSize,
+        arabicLineSpacing,
+        arabicAlign,
+        showTranslation,
+        translationLang,
+        translationFontSize,
+        wordHighlightColor,
+        animationType,
+        waveformEnabled,
+        waveformStyle,
+        waveformData,
+        showReference,
+        showBismillah,
+        bismillahStyle,
+        watermarkEnabled,
+        watermarkStyle,
+      } = stateRef.current;
       // 1. Draw Background
       if (customBgType === 'video' && videoElementRef?.current && videoElementRef.current.readyState >= 2) {
         const v = videoElementRef.current;
@@ -568,39 +660,7 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
     return () => {
       cancelAnimationFrame(animationFrameId);
     };
-  }, [
-    aspectRatio,
-    surah,
-    ayahs,
-    currentAyahIndex,
-    activeWordPosition,
-    theme,
-    customBgUrl,
-    customBgType,
-    bgOverlayOpacity,
-    arabicFont,
-    arabicFontSize,
-    arabicLineSpacing,
-    arabicAlign,
-    showTranslation,
-    translationLang,
-    translationFontSize,
-    animationType,
-    wordHighlightColor,
-    waveformEnabled,
-    waveformStyle,
-    waveformData,
-    currentTime,
-    duration,
-    isPlaying,
-    showReference,
-    showBismillah,
-    bismillahStyle,
-    watermarkEnabled,
-    watermarkStyle,
-    canvasWidth,
-    canvasHeight,
-  ]);
+  }, [canvasWidth, canvasHeight]);
 
   return (
     <div

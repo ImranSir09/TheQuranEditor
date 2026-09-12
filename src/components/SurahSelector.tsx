@@ -83,7 +83,6 @@ export default function SurahSelector({
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" />
             <input
               type="text"
-              autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name or number (e.g. 36, Yasin, Mulk)..."
@@ -92,7 +91,7 @@ export default function SurahSelector({
             {query && (
               <button
                 onClick={() => setQuery('')}
-                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white"
+                className="absolute right-2.5 top-2.5 text-slate-400 hover:text-white p-1"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -101,7 +100,7 @@ export default function SurahSelector({
 
           {/* Quick Popular Pills */}
           {!query && (
-            <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs">
+            <div className="mt-2.5 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none text-xs touch-pan-x">
               <span className="text-[10px] uppercase font-semibold text-slate-400 shrink-0">Popular:</span>
               {popularSurahsList.slice(0, 6).map((s) => (
                 <button
@@ -111,9 +110,9 @@ export default function SurahSelector({
                     onSelectSurah(s);
                     onClose();
                   }}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-medium shrink-0 transition ${
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-medium shrink-0 transition active:scale-95 ${
                     selectedSurah?.number === s.number
-                      ? 'bg-emerald-600 text-white'
+                      ? 'bg-emerald-600 text-white shadow-xs'
                       : 'bg-slate-800 border border-slate-700 text-slate-300 hover:border-emerald-500/50'
                   }`}
                 >
@@ -125,7 +124,7 @@ export default function SurahSelector({
         </div>
 
         {/* Surah List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-800/80">
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-800/80 overscroll-contain">
           {filteredSurahs.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs">
               No Surahs found matching &quot;{query}&quot;
@@ -141,7 +140,7 @@ export default function SurahSelector({
                     onSelectSurah(surah);
                     onClose();
                   }}
-                  className={`w-full px-4 py-2.5 flex items-center justify-between text-left transition ${
+                  className={`w-full min-h-[52px] px-4 py-2.5 flex items-center justify-between text-left transition active:bg-slate-800 active:scale-[0.99] ${
                     isSelected
                       ? 'bg-emerald-950/60 text-white'
                       : 'hover:bg-slate-800/50 text-slate-200'

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { 
   Play, 
   Pause, 
@@ -53,16 +53,78 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
   themeAccentColor,
 }) => {
   const scrubberRef = useRef<HTMLDivElement>(null);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [scrubTime, setScrubTime] = useState<number | null>(null);
 
-  const handleScrubberClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!scrubberRef.current || duration <= 0) return;
-    const rect = scrubberRef.current.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    onSeek(pos * duration);
+  const calculateTimeFromClientX = useCallback(
+    (clientX: number) => {
+      if (!scrubberRef.current || duration <= 0) return 0;
+      const rect = scrubberRef.current.getBoundingClientRect();
+      const pos = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      return pos * duration;
+    },
+    [duration]
+  );
+
+  const handlePointerDown = (clientX: number) => {
+    setIsScrubbing(true);
+    const targetTime = calculateTimeFromClientX(clientX);
+    setScrubTime(targetTime);
+    onSeek(targetTime);
     triggerHaptic();
   };
 
-  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (currentTime / duration) * 100)) : 0;
+  const handlePointerMove = (clientX: number) => {
+    if (!isScrubbing) return;
+    const targetTime = calculateTimeFromClientX(clientX);
+    setScrubTime(targetTime);
+    onSeek(targetTime);
+  };
+
+  const handlePointerUp = () => {
+    if (isScrubbing) {
+      setIsScrubbing(false);
+      setScrubTime(null);
+    }
+  };
+
+  // Global pointer move and up listeners while scrubbing so finger/cursor can leave the bar freely
+  useEffect(() => {
+    if (!isScrubbing) return;
+
+    const onGlobalMouseMove = (e: MouseEvent) => {
+      handlePointerMove(e.clientX);
+    };
+    const onGlobalMouseUp = () => {
+      handlePointerUp();
+    };
+
+    const onGlobalTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) {
+        handlePointerMove(e.touches[0].clientX);
+      }
+    };
+    const onGlobalTouchEnd = () => {
+      handlePointerUp();
+    };
+
+    window.addEventListener('mousemove', onGlobalMouseMove);
+    window.addEventListener('mouseup', onGlobalMouseUp);
+    window.addEventListener('touchmove', onGlobalTouchMove, { passive: false });
+    window.addEventListener('touchend', onGlobalTouchEnd);
+    window.addEventListener('touchcancel', onGlobalTouchEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', onGlobalMouseMove);
+      window.removeEventListener('mouseup', onGlobalMouseUp);
+      window.removeEventListener('touchmove', onGlobalTouchMove);
+      window.removeEventListener('touchend', onGlobalTouchEnd);
+      window.removeEventListener('touchcancel', onGlobalTouchEnd);
+    };
+  }, [isScrubbing, calculateTimeFromClientX]);
+
+  const displayedTime = isScrubbing && scrubTime !== null ? scrubTime : currentTime;
+  const progressPercent = duration > 0 ? Math.min(100, Math.max(0, (displayedTime / duration) * 100)) : 0;
 
   return (
     <div className="w-full bg-slate-950/95 border-t border-slate-800 backdrop-blur-md transition-all duration-300 select-none flex flex-col shrink-0">
@@ -144,36 +206,52 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
         </button>
       </div>
 
-      {/* Primary Scrubbing Track with generous touch hit area */}
+      {/* Primary Scrubbing Track with generous 44px mobile touch target */}
       <div 
         ref={scrubberRef}
-        onClick={handleScrubberClick}
-        className="w-full h-8 bg-slate-900/90 relative cursor-pointer group flex items-center border-b border-slate-800/50 px-2.5"
+        onMouseDown={(e) => handlePointerDown(e.clientX)}
+        onTouchStart={(e) => {
+          if (e.touches[0]) handlePointerDown(e.touches[0].clientX);
+        }}
+        className="w-full h-11 bg-slate-900/90 relative cursor-pointer group flex items-center border-b border-slate-800/50 px-3 touch-none select-none"
       >
         {/* Waveform preview bars inside scrubber */}
-        <div className="absolute inset-0 flex items-center justify-between px-2 opacity-30 group-hover:opacity-45 transition pointer-events-none">
-          {waveformData.slice(0, 48).map((val, idx) => (
+        <div className="absolute inset-x-3 inset-y-0 flex items-center justify-between opacity-35 group-hover:opacity-50 transition pointer-events-none">
+          {waveformData.slice(0, 52).map((val, idx) => (
             <div
               key={idx}
-              style={{ height: `${Math.max(4, val * 18)}px` }}
-              className="w-0.5 bg-slate-300 rounded-full"
+              style={{ height: `${Math.max(4, val * 22)}px` }}
+              className="w-0.5 bg-slate-300/80 rounded-full"
             />
           ))}
         </div>
 
         {/* Background Track Line */}
-        <div className="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden relative">
+        <div className="w-full h-2 bg-slate-800/90 rounded-full overflow-hidden relative shadow-inner">
           {/* Progress Fill */}
           <div
             style={{ width: `${progressPercent}%`, backgroundColor: themeAccentColor || '#10b981' }}
-            className="h-full transition-all duration-75 rounded-full shadow-xs"
+            className="h-full rounded-full shadow-xs transition-[width] duration-75"
           />
         </div>
+
+        {/* Floating Time Tooltip while scrubbing/dragging */}
+        {isScrubbing && (
+          <div
+            style={{ left: `${progressPercent}%` }}
+            className="absolute -top-7 -translate-x-1/2 bg-emerald-500 text-slate-950 font-mono text-[10px] font-bold px-2 py-0.5 rounded shadow-lg pointer-events-none flex items-center gap-1 z-30 animate-in fade-in zoom-in-95 duration-100"
+          >
+            <span>{formatTime(displayedTime)}</span>
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-solid border-t-emerald-500 border-t-4 border-x-transparent border-x-4 border-b-0" />
+          </div>
+        )}
 
         {/* Playhead Pin */}
         <div
           style={{ left: `${progressPercent}%` }}
-          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-lg border-2 border-emerald-600 transition-all duration-75 pointer-events-none group-hover:scale-125"
+          className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white shadow-md border-2 border-emerald-500 pointer-events-none transition-transform duration-100 ${
+            isScrubbing ? 'scale-125 ring-4 ring-emerald-500/30' : 'group-hover:scale-110'
+          }`}
         />
       </div>
 
