@@ -473,19 +473,15 @@ export default function QuranGenerator() {
       {/* Toast Alert */}
       {toastMessage && (
         <div 
-          style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 0px) + 64px)' }}
-          className="absolute left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-slate-700 backdrop-blur-md animate-in fade-in duration-150"
+          className="absolute top-16 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 text-white text-xs px-3.5 py-2 rounded-full shadow-2xl flex items-center gap-2 border border-slate-700 backdrop-blur-md animate-in fade-in duration-150"
         >
           <Check className="w-3.5 h-3.5 text-emerald-400" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* TOP HEADER: Touch Bar with Safe Area Top Padding to prevent overlap with Phone Status Bar */}
+      {/* TOP HEADER: Touch Bar */}
       <header 
-        style={{
-          paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
-        }}
         className="shrink-0 bg-slate-900/95 backdrop-blur-md border-b border-slate-800/80 px-3 z-20"
       >
         <div className="h-14 flex items-center justify-between">

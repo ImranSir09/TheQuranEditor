@@ -29,7 +29,15 @@ import { VideoToolbar } from './VideoToolbar';
 import { VideoBottomSheet, VideoToolTab } from './VideoBottomSheet';
 import { VideoExportModal } from './VideoExportModal';
 import SurahSelector from '../SurahSelector';
-import { triggerHaptic, shareVerseImage, saveViaSystemPicker } from '../../utils/native';
+import { 
+  triggerHaptic, 
+  shareVerseImage, 
+  saveViaSystemPicker,
+  saveVideoFile,
+  shareVideoFile,
+  getVideoExportMimeType,
+  isNativePlatform
+} from '../../utils/native';
 
 interface VideoEditorProps {
   initialSurah?: SurahInfo | null;
@@ -97,6 +105,9 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
   const [exportProgress, setExportProgress] = useState<number>(0);
   const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
   const [exportedBlob, setExportedBlob] = useState<Blob | null>(null);
+  const [exportedExtension, setExportedExtension] = useState<'mp4' | 'webm'>('mp4');
+  const [isSavingVideo, setIsSavingVideo] = useState<boolean>(false);
+  const [savedFileUri, setSavedFileUri] = useState<string | null>(null);
 
   // Undo / Redo history
   const [undoStack, setUndoStack] = useState<any[]>([]);
@@ -108,6 +119,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
   const customVideoRef = useRef<HTMLVideoElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const animationFrameRef = useRef<number | null>(null);
+  const exportIntervalRef = useRef<any>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -503,8 +515,14 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
       return;
     }
 
+    if (typeof MediaRecorder === 'undefined') {
+      showToast('Video recording not supported on this browser/device');
+      return;
+    }
+
     setIsExporting(true);
-    setExportProgress(5);
+    setExportProgress(3);
+    setSavedFileUri(null);
 
     try {
       // 1. Capture stream from canvas
@@ -531,12 +549,9 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
         }
       }
 
-      // Check supported MIME type
-      const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
-        ? 'video/mp4'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : 'video/webm';
+      // Check supported MIME type and container format
+      const { mimeType, extension } = getVideoExportMimeType();
+      setExportedExtension(extension);
 
       const recorder = new MediaRecorder(combinedStream, {
         mimeType,
@@ -550,8 +565,15 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
         }
       };
 
+      recorder.onerror = (event: any) => {
+        console.error('MediaRecorder error:', event);
+        setIsExporting(false);
+        audio.pause();
+        setIsPlaying(false);
+        showToast('Video recording encountered an error');
+      };
+
       recorder.onstop = () => {
-        const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
         const blob = new Blob(chunks, { type: mimeType });
         const videoUrl = URL.createObjectURL(blob);
         setExportedBlob(blob);
@@ -571,16 +593,25 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
       const exportStartTime = Date.now();
       const exportTotalMs = duration * 1000;
 
-      const progressInterval = setInterval(() => {
+      if (exportIntervalRef.current) {
+        clearInterval(exportIntervalRef.current);
+      }
+
+      exportIntervalRef.current = setInterval(() => {
         const elapsed = Date.now() - exportStartTime;
         const pct = Math.min(96, Math.round((elapsed / exportTotalMs) * 100));
         setExportProgress(pct);
 
         if (elapsed >= exportTotalMs || audio.currentTime >= clipOffsetSeconds + duration) {
-          clearInterval(progressInterval);
+          if (exportIntervalRef.current) {
+            clearInterval(exportIntervalRef.current);
+            exportIntervalRef.current = null;
+          }
           audio.pause();
           setIsPlaying(false);
-          recorder.stop();
+          if (recorder.state !== 'inactive') {
+            recorder.stop();
+          }
         }
       }, 250);
 
@@ -592,38 +623,89 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
     }
   };
 
-  // Download Video File
-  const handleDownloadVideo = () => {
-    if (!exportedVideoUrl || !selectedSurah) return;
-    const a = document.createElement('a');
-    a.href = exportedVideoUrl;
-    a.download = `Quran_${selectedSurah.englishName}_${startAyah}-${endAyah}.mp4`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    showToast('Video downloaded');
+  // Cancel in-progress export
+  const handleCancelExport = () => {
+    if (exportIntervalRef.current) {
+      clearInterval(exportIntervalRef.current);
+      exportIntervalRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.ondataavailable = null;
+        mediaRecorderRef.current.onstop = null;
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.warn('Error stopping recorder on cancel:', err);
+      }
+    }
+    if (audioRef.current) {
+      audioRef.current.pause();
+    }
+    setIsPlaying(false);
+    setIsExporting(false);
+    setExportProgress(0);
+    showToast('Export canceled');
+  };
+
+  // Save/Download Video File using Capacitor native Filesystem on Android or browser download fallback
+  const handleDownloadVideo = async () => {
+    if (!exportedBlob || !selectedSurah) {
+      showToast('No exported video available');
+      return;
+    }
+
+    setIsSavingVideo(true);
+    triggerHaptic();
+
+    const ext = exportedExtension;
+    const sanitizedSurah = selectedSurah.englishName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Quran_${sanitizedSurah}_${startAyah}-${endAyah}.${ext}`;
+
+    try {
+      const result = await saveVideoFile({
+        blob: exportedBlob,
+        filename,
+        mimeType: exportedBlob.type,
+      });
+
+      if (result.success) {
+        if (result.uri) {
+          setSavedFileUri(result.uri);
+        }
+        showToast(result.message);
+      } else {
+        showToast(result.message || 'Save failed. Please try again.');
+      }
+    } catch (err: any) {
+      console.error('Save video failed:', err);
+      showToast(`Save failed: ${err?.message || 'Device storage error'}`);
+    } finally {
+      setIsSavingVideo(false);
+    }
   };
 
   // Share Video File
   const handleShareVideo = async () => {
     if (!exportedBlob || !selectedSurah) return;
+    const ext = exportedExtension;
+    const sanitizedSurah = selectedSurah.englishName.replace(/[^a-zA-Z0-9_-]/g, '_');
+    const filename = `Quran_${sanitizedSurah}_${startAyah}-${endAyah}.${ext}`;
+    const title = `Surah ${selectedSurah.englishName}`;
+    const text = `Recitation of Holy Quran — Surah ${selectedSurah.englishName} (${startAyah}:${endAyah})`;
+
     try {
-      const file = new File(
-        [exportedBlob],
-        `Quran_${selectedSurah.englishName}_${startAyah}-${endAyah}.mp4`,
-        { type: exportedBlob.type }
-      );
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          files: [file],
-          title: `Surah ${selectedSurah.englishName}`,
-          text: `Recitation of Holy Quran — Surah ${selectedSurah.englishName} (${startAyah}:${endAyah})`,
-        });
-      } else {
-        handleDownloadVideo();
+      const shared = await shareVideoFile({
+        blob: exportedBlob,
+        filename,
+        title,
+        text,
+      });
+      if (!shared && !isNativePlatform()) {
+        await handleDownloadVideo();
       }
-    } catch {
-      handleDownloadVideo();
+    } catch (err) {
+      console.error('Share error:', err);
+      await handleDownloadVideo();
     }
   };
 
@@ -723,7 +805,12 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
       />
 
       {/* 4. Bottom Dock Navigation Bar */}
-      <div className="w-full bg-slate-900 border-t border-slate-800/80 px-2 py-2 flex items-center justify-around shrink-0 z-20">
+      <div 
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.5rem)',
+        }}
+        className="w-full bg-slate-900 border-t border-slate-800/80 px-2 pt-2 flex items-center justify-around shrink-0 z-20"
+      >
         {[
           { id: 'text', label: 'Script', icon: Type, color: 'text-emerald-400' },
           { id: 'animation', label: 'Motion', icon: Sparkles, color: 'text-amber-400' },
@@ -831,6 +918,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
           setIsExportModalOpen(false);
           setExportedVideoUrl(null);
           setExportedBlob(null);
+          setSavedFileUri(null);
         }}
         surah={selectedSurah}
         startAyah={startAyah}
@@ -841,7 +929,11 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
         isExporting={isExporting}
         exportProgress={exportProgress}
         exportedVideoUrl={exportedVideoUrl}
+        exportedExtension={exportedExtension}
+        isSavingVideo={isSavingVideo}
+        savedFileUri={savedFileUri}
         onStartExport={handleStartExport}
+        onCancelExport={handleCancelExport}
         onDownloadVideo={handleDownloadVideo}
         onShareVideo={handleShareVideo}
       />

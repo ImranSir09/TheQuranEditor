@@ -7,6 +7,11 @@
   --sar: env(safe-area-inset-right, 0px);
 }
 
+html, body {
+  background-color: #020617;
+  color-scheme: dark;
+}
+
 @layer utilities {
   .font-arabic {
     font-family: 'Amiri', 'Scheherazade New', serif;

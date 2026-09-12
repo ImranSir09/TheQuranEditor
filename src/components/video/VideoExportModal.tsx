@@ -26,7 +26,11 @@ interface VideoExportModalProps {
   isExporting: boolean;
   exportProgress: number; // 0 to 100
   exportedVideoUrl: string | null;
+  exportedExtension?: 'mp4' | 'webm';
+  isSavingVideo?: boolean;
+  savedFileUri?: string | null;
   onStartExport: (quality: '1080p' | '720p') => void;
+  onCancelExport?: () => void;
   onDownloadVideo: () => void;
   onShareVideo: () => void;
 }
@@ -43,7 +47,11 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   isExporting,
   exportProgress,
   exportedVideoUrl,
+  exportedExtension = 'mp4',
+  isSavingVideo = false,
+  savedFileUri = null,
   onStartExport,
+  onCancelExport,
   onDownloadVideo,
   onShareVideo,
 }) => {
@@ -57,9 +65,15 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
   const isReadyToExport = isArabicValid && isRangeValid;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div 
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div 
-        className="bg-slate-900 rounded-2xl w-full max-w-md flex flex-col shadow-2xl border border-slate-800 overflow-hidden text-slate-100"
+        className="bg-slate-900 rounded-2xl w-full max-w-md max-h-[85vh] flex flex-col shadow-2xl border border-slate-800 overflow-hidden text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -114,11 +128,22 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
               <p className="text-[10px] text-slate-500">
                 Please keep this tab open while the browser compiles your video.
               </p>
+              {onCancelExport && (
+                <button
+                  onClick={() => {
+                    triggerHaptic();
+                    onCancelExport();
+                  }}
+                  className="mt-1 py-1.5 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-rose-400 hover:text-rose-300 text-xs font-medium border border-slate-700/80 transition"
+                >
+                  Cancel Export
+                </button>
+              )}
             </div>
           ) : exportedVideoUrl ? (
             /* Finished Export State */
             <div className="space-y-4">
-              <div className="rounded-xl overflow-hidden bg-black aspect-video border border-slate-800 flex items-center justify-center">
+              <div className="relative rounded-xl overflow-hidden bg-black aspect-video border border-slate-800 flex items-center justify-center">
                 <video
                   src={exportedVideoUrl}
                   controls
@@ -126,6 +151,9 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                   playsInline
                   className="w-full h-full object-contain"
                 />
+                <div className="absolute top-2 right-2 px-2 py-0.5 rounded bg-black/70 backdrop-blur-xs border border-white/10 text-[10px] font-mono text-emerald-400 uppercase tracking-wider font-semibold">
+                  {exportedExtension}
+                </div>
               </div>
 
               <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-700/50 flex items-center gap-2">
@@ -135,15 +163,36 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                 </span>
               </div>
 
+              {savedFileUri && (
+                <div className="p-2.5 rounded-xl bg-slate-800/80 border border-emerald-500/40 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <div className="text-[11px] text-slate-300 leading-tight">
+                    <span className="font-semibold text-emerald-300">Saved to Documents</span>
+                    <p className="text-[10px] text-slate-400 mt-0.5">Accessible in your device Files or Documents app</p>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => {
                     triggerHaptic();
                     onDownloadVideo();
                   }}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg transition"
+                  disabled={isSavingVideo}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 text-white font-semibold text-xs flex items-center justify-center gap-2 shadow-lg transition active:scale-98"
                 >
-                  <Download className="w-4 h-4" /> Download Video
+                  {isSavingVideo ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving to Device...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>{isNativePlatform() ? 'Save Video to Files' : 'Download Video'}</span>
+                    </>
+                  )}
                 </button>
 
                 <button
@@ -151,7 +200,8 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
                     triggerHaptic();
                     onShareVideo();
                   }}
-                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
+                  disabled={isSavingVideo}
+                  className="py-2.5 px-4 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 border border-slate-700 transition"
                 >
                   <Share2 className="w-4 h-4" /> Share
                 </button>

@@ -164,7 +164,12 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
       </div>
 
       {/* Drawer Body */}
-      <div className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300">
+      <div 
+        style={{
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1.5rem)',
+        }}
+        className="p-4 overflow-y-auto space-y-4 text-xs text-slate-300"
+      >
         {/* TAB 1: TEXT & CALLIGRAPHY */}
         {activeTab === 'text' && (
           <>

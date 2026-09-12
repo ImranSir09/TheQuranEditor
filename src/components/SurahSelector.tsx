@@ -40,9 +40,15 @@ export default function SurahSelector({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200">
+    <div 
+      style={{
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
+    >
       <div 
-        className="bg-slate-900 rounded-2xl w-full max-w-lg max-h-[85vh] flex flex-col shadow-2xl border border-slate-800 overflow-hidden text-slate-100"
+        className="bg-slate-900 rounded-2xl w-full max-w-lg max-h-[80vh] flex flex-col shadow-2xl border border-slate-800 overflow-hidden text-slate-100"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

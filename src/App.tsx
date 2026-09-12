@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Image as ImageIcon, Video as VideoIcon } from 'lucide-react';
 import QuranGenerator from './components/QuranGenerator';
 import { VideoEditor } from './components/video/VideoEditor';
-import { triggerHaptic } from './utils/native';
+import { triggerHaptic, initCapacitorApp } from './utils/native';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'editor' | 'video'>('editor');
+
+  useEffect(() => {
+    initCapacitorApp();
+  }, []);
 
   return (
     <div className="h-[100dvh] w-full bg-slate-950 text-slate-100 flex justify-center items-center overflow-hidden">
@@ -15,13 +19,18 @@ export default function App() {
           activeTab === 'video' ? 'max-w-[500px] sm:max-w-xl md:max-w-2xl' : 'max-w-[450px]'
         }`}
       >
-        {/* Top-Level Tab Switcher Bar */}
-        <div className="w-full bg-slate-950 border-b border-slate-800/90 px-3 py-1.5 flex items-center justify-between shrink-0 z-30">
-          <div className="flex items-center gap-1.5">
+        {/* Top-Level Tab Switcher Bar: safely padded below Android/iOS status bar */}
+        <div 
+          style={{
+            paddingTop: 'max(env(safe-area-inset-top, 0px), 0px)',
+          }}
+          className="w-full bg-slate-950 border-b border-slate-800/90 px-3 pb-2 flex items-center justify-between shrink-0 z-30 transition-[padding]"
+        >
+          <div className="flex items-center gap-1.5 pt-1.5">
             <span className="font-bold text-xs tracking-tight text-emerald-400">TheQuranEditor</span>
           </div>
 
-          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-xl p-0.5 shadow-inner">
+          <div className="flex items-center bg-slate-900/90 border border-slate-800 rounded-xl p-0.5 shadow-inner mt-1.5">
             <button
               onClick={() => {
                 triggerHaptic();
