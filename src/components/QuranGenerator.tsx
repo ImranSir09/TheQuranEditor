@@ -67,6 +67,11 @@ export default function QuranGenerator() {
   const [showUrdu, setShowUrdu] = useState<boolean>(false);
   const [showReference, setShowReference] = useState<boolean>(true);
 
+  // Hadith of the Moment Branding Watermark
+  const [watermarkEnabled, setWatermarkEnabled] = useState<boolean>(true);
+  const [watermarkStyle, setWatermarkStyle] = useState<'badge' | 'emblem' | 'text'>('badge');
+  const [watermarkOpacity, setWatermarkOpacity] = useState<number>(0.9);
+
   // Typography
   const [arabicFont, setArabicFont] = useState<string>('Amiri');
   const [arabicFontSize, setArabicFontSize] = useState<number>(24);
@@ -488,10 +493,11 @@ export default function QuranGenerator() {
           {/* Surah Trigger Chip */}
           <button
             onClick={() => {
+              triggerHaptic();
               setActiveTool('none');
               setIsSurahModalOpen(true);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 text-white transition text-xs font-semibold max-w-[210px] truncate"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/90 hover:bg-slate-700/90 border border-slate-700/80 text-white transition active:scale-95 text-xs font-semibold max-w-[160px] xs:max-w-[210px] truncate"
           >
             <div className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-bold shrink-0">
               {selectedSurah?.number || 1}
@@ -513,7 +519,7 @@ export default function QuranGenerator() {
             {/* Quick Presets Icon */}
             <button
               onClick={() => toggleTool('presets')}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition active:scale-95 ${
                 activeTool === 'presets'
                   ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                   : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
@@ -526,7 +532,7 @@ export default function QuranGenerator() {
             {/* Copy Text Icon */}
             <button
               onClick={handleCopyText}
-              className="w-10 h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/80 transition"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-slate-300 hover:text-white hover:bg-slate-800/80 transition active:scale-95"
               title="Copy Text"
             >
               <Copy className="w-4 h-4" />
@@ -535,10 +541,10 @@ export default function QuranGenerator() {
             {/* Export Sheet Trigger */}
             <button
               onClick={() => toggleTool('export')}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition ${
+              className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition active:scale-95 ${
                 activeTool === 'export'
                   ? 'bg-emerald-500 text-slate-950 font-bold'
-                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/30'
+                  : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-950/40'
               }`}
               title="Export Image"
             >
@@ -573,6 +579,9 @@ export default function QuranGenerator() {
             showEnglish={showEnglish}
             showUrdu={showUrdu}
             showReference={showReference}
+            watermarkEnabled={watermarkEnabled}
+            watermarkStyle={watermarkStyle}
+            watermarkOpacity={watermarkOpacity}
             arabicFont={arabicFont}
             arabicFontSize={arabicFontSize}
             arabicLineSpacing={arabicLineSpacing}
@@ -591,31 +600,44 @@ export default function QuranGenerator() {
 
       {/* TOUCH DRAWER / TOOL TRAY (Above Bottom Dock) */}
       {activeTool !== 'none' && (
-        <div 
-          style={{
-            bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 0px) + 64px)',
-          }}
-          className="absolute inset-x-0 bg-slate-900/98 backdrop-blur-xl border-t border-slate-800 shadow-2xl z-30 p-3.5 animate-in slide-in-from-bottom-2 duration-150 rounded-t-2xl max-h-[70vh] overflow-y-auto"
-        >
-          {/* Tool Drawer Header */}
-          <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-800/80">
-            <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-              {activeTool === 'palette' && <><Palette className="w-3.5 h-3.5" /> Color & Theme</>}
-              {activeTool === 'ratio' && <><Crop className="w-3.5 h-3.5" /> Aspect Ratio</>}
-              {activeTool === 'type' && <><Type className="w-3.5 h-3.5" /> Typography & Size</>}
-              {activeTool === 'languages' && <><Languages className="w-3.5 h-3.5" /> Text Toggles</>}
-              {activeTool === 'frame' && <><Square className="w-3.5 h-3.5" /> Frame & Spacing</>}
-              {activeTool === 'range' && <><Hash className="w-3.5 h-3.5" /> Verse Range</>}
-              {activeTool === 'presets' && <><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Presets</>}
-              {activeTool === 'export' && <><Download className="w-3.5 h-3.5 text-emerald-400" /> Export High-Res</>}
-            </span>
-            <button
-              onClick={() => setActiveTool('none')}
-              className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        <>
+          {/* Backdrop overlay for dismissing tool drawer */}
+          <div 
+            className="fixed inset-0 z-25 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+            onClick={() => {
+              triggerHaptic();
+              setActiveTool('none');
+            }}
+          />
+
+          <div 
+            style={{
+              bottom: 'calc(max(env(safe-area-inset-bottom, 0px), 0px) + 64px)',
+            }}
+            className="absolute inset-x-0 bg-slate-900/98 backdrop-blur-xl border-t border-slate-800 shadow-2xl z-30 p-3.5 animate-in slide-in-from-bottom-2 duration-150 rounded-t-2xl max-h-[70vh] overflow-y-auto"
+          >
+            {/* Visual drag pill handle */}
+            <div className="w-10 h-1 bg-slate-700/80 rounded-full mx-auto mb-2.5 shrink-0" />
+
+            {/* Tool Drawer Header */}
+            <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-slate-800/80">
+              <span className="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                {activeTool === 'palette' && <><Palette className="w-3.5 h-3.5" /> Color & Theme</>}
+                {activeTool === 'ratio' && <><Crop className="w-3.5 h-3.5" /> Aspect Ratio</>}
+                {activeTool === 'type' && <><Type className="w-3.5 h-3.5" /> Typography & Size</>}
+                {activeTool === 'languages' && <><Languages className="w-3.5 h-3.5" /> Text Toggles</>}
+                {activeTool === 'frame' && <><Square className="w-3.5 h-3.5" /> Frame & Spacing</>}
+                {activeTool === 'range' && <><Hash className="w-3.5 h-3.5" /> Verse Range</>}
+                {activeTool === 'presets' && <><Sparkles className="w-3.5 h-3.5 text-amber-400" /> Presets</>}
+                {activeTool === 'export' && <><Download className="w-3.5 h-3.5 text-emerald-400" /> Export High-Res</>}
+              </span>
+              <button
+                onClick={() => setActiveTool('none')}
+                className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition active:scale-95"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
           {/* TOOL 1: PALETTE & THEMES */}
           {activeTool === 'palette' && (
@@ -976,6 +998,61 @@ export default function QuranGenerator() {
                   ))}
                 </div>
               </div>
+
+              {/* Hadith of the Moment Watermark Controls */}
+              <div className="pt-2 border-t border-slate-800/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <img 
+                      src="/icon.svg" 
+                      alt="Brand" 
+                      className="w-4 h-4 rounded-full object-cover" 
+                    />
+                    <span className="text-xs font-medium text-slate-200">
+                      Branding Watermark
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      triggerHaptic();
+                      setWatermarkEnabled(!watermarkEnabled);
+                      showToast(watermarkEnabled ? 'Watermark hidden' : 'Watermark added');
+                    }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                      watermarkEnabled
+                        ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}
+                  >
+                    {watermarkEnabled ? 'Enabled' : 'Disabled'}
+                  </button>
+                </div>
+
+                {watermarkEnabled && (
+                  <div className="grid grid-cols-3 gap-1.5 pt-0.5">
+                    {[
+                      { id: 'badge', label: 'Badge Pill' },
+                      { id: 'emblem', label: 'Circle Icon' },
+                      { id: 'text', label: 'Clean Text' },
+                    ].map((st) => (
+                      <button
+                        key={st.id}
+                        onClick={() => {
+                          triggerHaptic();
+                          setWatermarkStyle(st.id as 'badge' | 'emblem' | 'text');
+                        }}
+                        className={`py-1.5 px-2 rounded-lg border text-[11px] font-medium transition text-center ${
+                          watermarkStyle === st.id
+                            ? 'border-sky-500 bg-sky-500/15 text-sky-300 font-bold ring-1 ring-sky-500/30'
+                            : 'border-slate-800 bg-slate-800/60 text-slate-400 hover:border-slate-700'
+                        }`}
+                      >
+                        {st.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1193,6 +1270,7 @@ export default function QuranGenerator() {
             </div>
           )}
         </div>
+        </>
       )}
 
       {/* BOTTOM ICON-ONLY TOOLBAR / DOCK */}
@@ -1206,7 +1284,7 @@ export default function QuranGenerator() {
         {/* Palette / Theme Icon */}
         <button
           onClick={() => toggleTool('palette')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'palette'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1219,7 +1297,7 @@ export default function QuranGenerator() {
         {/* Aspect Ratio Icon */}
         <button
           onClick={() => toggleTool('ratio')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'ratio'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1232,7 +1310,7 @@ export default function QuranGenerator() {
         {/* Typography Icon */}
         <button
           onClick={() => toggleTool('type')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'type'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1245,7 +1323,7 @@ export default function QuranGenerator() {
         {/* Translations Icon */}
         <button
           onClick={() => toggleTool('languages')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'languages'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1258,7 +1336,7 @@ export default function QuranGenerator() {
         {/* Frame & Spacing Icon */}
         <button
           onClick={() => toggleTool('frame')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'frame'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
@@ -1271,7 +1349,7 @@ export default function QuranGenerator() {
         {/* Verse Range Icon */}
         <button
           onClick={() => toggleTool('range')}
-          className={`w-11 h-11 rounded-xl flex items-center justify-center transition ${
+          className={`w-11 h-11 rounded-xl flex items-center justify-center transition active:scale-95 ${
             activeTool === 'range'
               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
               : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'

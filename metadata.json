@@ -1,6 +1,6 @@
 {
   "name": "Quran Editor",
-  "description": "Touch-ready mobile Quran image and video creation studio with verified Uthmani calligraphy, recitation synchronization, and multi-track video timeline.",
+  "description": "Touch-ready mobile Quran and Hadith image and video creation studio branded with Hadith of the Moment, featuring verified calligraphy, audio recitation, and customizable watermarks.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

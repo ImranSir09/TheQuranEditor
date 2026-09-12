@@ -74,6 +74,12 @@ interface VideoBottomSheetProps {
   setTranslationLang: (lang: 'en' | 'ur') => void;
   translationFontSize: number;
   setTranslationFontSize: (size: number) => void;
+
+  // Watermark Props
+  watermarkEnabled: boolean;
+  setWatermarkEnabled: (enabled: boolean) => void;
+  watermarkStyle: 'badge' | 'emblem' | 'text';
+  setWatermarkStyle: (style: 'badge' | 'emblem' | 'text') => void;
 }
 
 const HIGHLIGHT_COLORS = [
@@ -128,6 +134,10 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
   setTranslationLang,
   translationFontSize,
   setTranslationFontSize,
+  watermarkEnabled,
+  setWatermarkEnabled,
+  watermarkStyle,
+  setWatermarkStyle,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
@@ -135,9 +145,12 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
   if (activeTab === 'none') return null;
 
   return (
-    <div className="absolute inset-x-0 bottom-0 z-30 bg-slate-900 border-t border-slate-800 rounded-t-2xl shadow-2xl flex flex-col max-h-[70vh] animate-in slide-in-from-bottom duration-200">
+    <div className="absolute inset-x-0 bottom-0 z-30 bg-slate-900 border-t border-slate-800/90 rounded-t-2xl shadow-2xl flex flex-col max-h-[70vh] animate-in slide-in-from-bottom duration-200">
+      {/* Visual drag pill handle */}
+      <div className="w-10 h-1 bg-slate-700/80 rounded-full mx-auto mt-2.5 mb-1 shrink-0" />
+
       {/* Drawer Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-800 shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-800/80 shrink-0">
         <div className="flex items-center gap-2">
           {activeTab === 'text' && <Type className="w-4 h-4 text-emerald-400" />}
           {activeTab === 'animation' && <Sparkles className="w-4 h-4 text-amber-400" />}
@@ -157,7 +170,7 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
             triggerHaptic();
             onClose();
           }}
-          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition active:scale-95"
         >
           <X className="w-4 h-4" />
         </button>
@@ -517,6 +530,57 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
                   }
                 }}
               />
+            </div>
+
+            {/* Hadith of the Moment Branding Watermark */}
+            <div className="pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <img src="/icon.svg" alt="Brand" className="w-5 h-5 rounded-md object-cover" />
+                  <div>
+                    <span className="font-semibold text-xs text-slate-200 block">Hadith of the Moment Watermark</span>
+                    <span className="text-[10px] text-slate-400">Included on exported video frames</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    triggerHaptic();
+                    setWatermarkEnabled(!watermarkEnabled);
+                  }}
+                  className={`px-3 py-1 rounded-lg text-xs font-semibold transition active:scale-95 ${
+                    watermarkEnabled
+                      ? 'bg-sky-500/20 text-sky-400 border border-sky-500/40'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  {watermarkEnabled ? 'Enabled' : 'Disabled'}
+                </button>
+              </div>
+
+              {watermarkEnabled && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {[
+                    { id: 'badge', label: 'Badge Pill' },
+                    { id: 'emblem', label: 'Circle Icon' },
+                    { id: 'text', label: 'Clean Text' },
+                  ].map((st) => (
+                    <button
+                      key={st.id}
+                      onClick={() => {
+                        triggerHaptic();
+                        setWatermarkStyle(st.id as 'badge' | 'emblem' | 'text');
+                      }}
+                      className={`py-2 px-2 rounded-lg border text-xs font-medium transition text-center ${
+                        watermarkStyle === st.id
+                          ? 'border-sky-500 bg-sky-500/15 text-sky-300 font-bold ring-1 ring-sky-500/30'
+                          : 'border-slate-800 bg-slate-800/60 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

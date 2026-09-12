@@ -2,13 +2,13 @@
   "id": "/",
   "name": "Quran Editor",
   "short_name": "QuranEditor",
-  "description": "Touch-ready mobile Quran verse editor with non-scrolling interface, icon-only formatting dock, and verified Uthmani calligraphy.",
+  "description": "Touch-ready mobile Quran and Hadith image and video creation studio branded with Hadith of the Moment, featuring verified calligraphy, audio recitation, and customizable watermarks.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#020617",
-  "theme_color": "#020617",
+  "background_color": "#0090c5",
+  "theme_color": "#0090c5",
   "icons": [
     {
       "src": "/pwa-192x192.png",

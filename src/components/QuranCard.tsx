@@ -15,6 +15,9 @@ interface QuranCardProps {
   showEnglish: boolean;
   showUrdu: boolean;
   showReference: boolean;
+  watermarkEnabled?: boolean;
+  watermarkStyle?: 'badge' | 'emblem' | 'text';
+  watermarkOpacity?: number;
   arabicFont: string;
   arabicFontSize: number;
   arabicLineSpacing: number;
@@ -42,6 +45,9 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
     showEnglish,
     showUrdu,
     showReference,
+    watermarkEnabled = true,
+    watermarkStyle = 'badge',
+    watermarkOpacity = 0.9,
     arabicFont,
     arabicFontSize,
     arabicLineSpacing,
@@ -300,16 +306,46 @@ export const QuranCard = forwardRef<HTMLDivElement, QuranCardProps>(function Qur
         )}
       </main>
 
-      {/* Bottom Footer Attribution */}
-      {showReference && surah && (
-        <footer className="relative z-10 w-full pt-3 border-t border-white/10 flex justify-between items-center text-[10px] sm:text-[11px] opacity-75 font-sans shrink-0">
-          <span>
-            Surah {surah.englishName} ({surah.number}:{startAyah}
-            {startAyah !== endAyah ? `-${endAyah}` : ''})
-          </span>
-          <span className="tracking-wider uppercase font-semibold text-[9px] sm:text-[10px]">
-            Quran.com Verified
-          </span>
+      {/* Bottom Watermark & Attribution Footer */}
+      {(watermarkEnabled || (showReference && surah)) && (
+        <footer className="relative z-10 w-full pt-2 flex flex-col items-center gap-2 shrink-0">
+          {/* Brand Watermark */}
+          {watermarkEnabled && (
+            <div 
+              style={{ opacity: watermarkOpacity }}
+              className="flex items-center justify-center transition-opacity duration-200"
+            >
+              {watermarkStyle === 'badge' ? (
+                <img 
+                  src="/branding-watermark-badge.png" 
+                  alt="Hadith of the Moment" 
+                  className="h-6 sm:h-7 object-contain drop-shadow-md" 
+                />
+              ) : watermarkStyle === 'emblem' ? (
+                <div className="flex items-center gap-1.5 bg-black/40 backdrop-blur-xs border border-white/20 px-2.5 py-1 rounded-full shadow-xs">
+                  <img src="/icon.svg" alt="Hadith of the Moment" className="w-4 h-4 rounded-full object-cover" />
+                  <span className="text-[10px] font-bold text-sky-400 tracking-wider">HADITH OF THE MOMENT</span>
+                </div>
+              ) : (
+                <span className="text-[10px] font-bold tracking-widest text-sky-400 uppercase drop-shadow">
+                  HADITH OF THE MOMENT
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Reference Attribution */}
+          {showReference && surah && (
+            <div className="w-full pt-1.5 border-t border-white/10 flex justify-between items-center text-[10px] sm:text-[11px] opacity-75 font-sans">
+              <span>
+                Surah {surah.englishName} ({surah.number}:{startAyah}
+                {startAyah !== endAyah ? `-${endAyah}` : ''})
+              </span>
+              <span className="tracking-wider uppercase font-semibold text-[9px] sm:text-[10px]">
+                Quran.com Verified
+              </span>
+            </div>
+          )}
         </footer>
       )}
     </div>

@@ -36,7 +36,8 @@ import {
   saveVideoFile,
   shareVideoFile,
   getVideoExportMimeType,
-  isNativePlatform
+  isNativePlatform,
+  listenToHardwareBack
 } from '../../utils/native';
 
 interface VideoEditorProps {
@@ -94,6 +95,10 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
   const [waveformEnabled, setWaveformEnabled] = useState<boolean>(true);
   const [waveformStyle, setWaveformStyle] = useState<'bars' | 'wave' | 'minimal'>('bars');
 
+  // Hadith of the Moment Branding Watermark
+  const [watermarkEnabled, setWatermarkEnabled] = useState<boolean>(true);
+  const [watermarkStyle, setWatermarkStyle] = useState<'badge' | 'emblem' | 'text'>('badge');
+
   // UI state: bottom dock & timeline
   const [activeTool, setActiveTool] = useState<VideoToolTab>('none');
   const [isTimelineExpanded, setIsTimelineExpanded] = useState<boolean>(false);
@@ -129,6 +134,33 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
   // Helper to get active theme object
   const currentTheme =
     VIDEO_BG_THEMES.find((t) => t.id === themeId) || VIDEO_BG_THEMES[0];
+
+  // Hardware Back button handling for Android APK
+  useEffect(() => {
+    const cleanup = listenToHardwareBack(() => {
+      if (isExportModalOpen) {
+        if (!isExporting) setIsExportModalOpen(false);
+        return true;
+      }
+      if (isSurahModalOpen) {
+        setIsSurahModalOpen(false);
+        return true;
+      }
+      if (activeTool !== 'none') {
+        setActiveTool('none');
+        return true;
+      }
+      if (isTimelineExpanded) {
+        setIsTimelineExpanded(false);
+        return true;
+      }
+      return false;
+    });
+
+    return () => {
+      cleanup();
+    };
+  }, [isExportModalOpen, isExporting, isSurahModalOpen, activeTool, isTimelineExpanded]);
 
   // 1. Initial Load of Surah list from cache or API
   useEffect(() => {
@@ -767,6 +799,8 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
           showReference={showReference}
           showBismillah={showBismillah}
           bismillahStyle={bismillahStyle}
+          watermarkEnabled={watermarkEnabled}
+          watermarkStyle={watermarkStyle}
           canvasRef={canvasRef}
           videoElementRef={customVideoRef}
         />
@@ -809,7 +843,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
         style={{
           paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.5rem)',
         }}
-        className="w-full bg-slate-900 border-t border-slate-800/80 px-2 pt-2 flex items-center justify-around shrink-0 z-20"
+        className="w-full bg-slate-900 border-t border-slate-800/80 px-1.5 pt-1.5 flex items-center justify-around shrink-0 z-20"
       >
         {[
           { id: 'text', label: 'Script', icon: Type, color: 'text-emerald-400' },
@@ -827,18 +861,29 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
                 triggerHaptic();
                 setActiveTool(isActive ? 'none' : (tool.id as VideoToolTab));
               }}
-              className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition ${
+              className={`flex flex-col items-center justify-center min-h-[44px] min-w-[56px] py-1 px-2 rounded-xl transition active:scale-95 ${
                 isActive
                   ? 'bg-slate-800 text-white shadow-inner font-bold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
               <Icon className={`w-4 h-4 ${isActive ? tool.color : ''}`} />
-              <span className="text-[10px]">{tool.label}</span>
+              <span className="text-[10px] tracking-tight">{tool.label}</span>
             </button>
           );
         })}
       </div>
+
+      {/* Backdrop overlay for dismissing bottom sheet on mobile */}
+      {activeTool !== 'none' && (
+        <div 
+          className="fixed inset-0 z-25 bg-black/40 backdrop-blur-xs animate-in fade-in duration-150"
+          onClick={() => {
+            triggerHaptic();
+            setActiveTool('none');
+          }}
+        />
+      )}
 
       {/* Bottom Sheet Drawer for Selected Tool */}
       <VideoBottomSheet
@@ -894,6 +939,10 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah }) => {
         setTranslationLang={setTranslationLang}
         translationFontSize={translationFontSize}
         setTranslationFontSize={setTranslationFontSize}
+        watermarkEnabled={watermarkEnabled}
+        setWatermarkEnabled={setWatermarkEnabled}
+        watermarkStyle={watermarkStyle}
+        setWatermarkStyle={setWatermarkStyle}
       />
 
       {/* Surah Selector Modal (Reused existing component) */}

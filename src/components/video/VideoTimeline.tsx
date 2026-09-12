@@ -69,14 +69,14 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
       {/* Playback Transport Bar */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-slate-800/80 gap-2">
         {/* Left: Play/Pause and Seek Buttons */}
-        <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5">
           <button
             onClick={() => {
               triggerHaptic();
               onSeek(0);
             }}
             title="Reset to beginning"
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition active:scale-95"
           >
             <RotateCcw className="w-3.5 h-3.5" />
           </button>
@@ -87,7 +87,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
               onSeek(Math.max(0, currentTime - 3));
             }}
             title="Back 3s"
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition active:scale-95"
           >
             <SkipBack className="w-3.5 h-3.5" />
           </button>
@@ -98,7 +98,7 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
               onTogglePlay();
             }}
             title={isPlaying ? 'Pause' : 'Play'}
-            className="w-8 h-8 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-lg transition active:scale-95"
+            className="w-9 h-9 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white flex items-center justify-center shadow-md transition active:scale-90"
           >
             {isPlaying ? <Pause className="w-4 h-4 fill-white" /> : <Play className="w-4 h-4 fill-white ml-0.5" />}
           </button>
@@ -109,14 +109,14 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
               onSeek(Math.min(duration, currentTime + 3));
             }}
             title="Forward 3s"
-            className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition"
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded-lg hover:bg-slate-800/60 transition active:scale-95"
           >
             <SkipForward className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {/* Center: Time indicator and sync status badge */}
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-1.5 text-xs">
           <span className="font-mono text-emerald-400 font-semibold">{formatTime(currentTime)}</span>
           <span className="text-slate-600 font-mono">/</span>
           <span className="font-mono text-slate-400">{formatTime(duration)}</span>
@@ -124,18 +124,11 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
           {hasWordSegments ? (
             <span 
               title="Verified Word-by-Word Timing loaded from Quran.com"
-              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30"
+              className="hidden sm:inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30"
             >
               <CheckCircle2 className="w-2.5 h-2.5" /> Word Sync
             </span>
-          ) : (
-            <span 
-              title="Ayah-level timing synchronization"
-              className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700"
-            >
-              Ayah Sync
-            </span>
-          )}
+          ) : null}
         </div>
 
         {/* Right: Expand/Collapse Multi-Track Button */}
@@ -144,18 +137,18 @@ export const VideoTimeline: React.FC<VideoTimelineProps> = ({
             triggerHaptic();
             onToggleExpanded();
           }}
-          className="flex items-center gap-1 px-2 py-1 text-xs text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition border border-slate-800"
+          className="flex items-center gap-1 px-2.5 py-1 text-xs text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition active:scale-95 border border-slate-800/80"
         >
           <span className="text-[11px] font-medium hidden xs:inline">{isExpanded ? 'Collapse' : 'Tracks'}</span>
           {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronUp className="w-3.5 h-3.5" />}
         </button>
       </div>
 
-      {/* Primary Scrubbing Track */}
+      {/* Primary Scrubbing Track with generous touch hit area */}
       <div 
         ref={scrubberRef}
         onClick={handleScrubberClick}
-        className="w-full h-7 bg-slate-900/90 relative cursor-pointer group flex items-center border-b border-slate-800/50 px-2"
+        className="w-full h-8 bg-slate-900/90 relative cursor-pointer group flex items-center border-b border-slate-800/50 px-2.5"
       >
         {/* Waveform preview bars inside scrubber */}
         <div className="absolute inset-0 flex items-center justify-between px-2 opacity-30 group-hover:opacity-45 transition pointer-events-none">

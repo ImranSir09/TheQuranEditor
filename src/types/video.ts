@@ -71,5 +71,7 @@ export interface VideoProject {
   showBismillah: boolean;
   bismillahStyle: string;
   showReference: boolean;
+  watermarkEnabled?: boolean;
+  watermarkStyle?: 'badge' | 'emblem' | 'text';
   updatedAt: number;
 }

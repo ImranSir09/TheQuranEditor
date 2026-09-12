@@ -45,6 +45,10 @@ export default function SurahSelector({
         paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)',
         paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 1rem)',
       }}
+      onClick={() => {
+        triggerHaptic();
+        onClose();
+      }}
       className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in duration-200"
     >
       <div 

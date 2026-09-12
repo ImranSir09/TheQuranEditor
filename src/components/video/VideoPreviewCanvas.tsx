@@ -32,6 +32,8 @@ interface VideoPreviewCanvasProps {
   showReference: boolean;
   showBismillah: boolean;
   bismillahStyle: string;
+  watermarkEnabled?: boolean;
+  watermarkStyle?: 'badge' | 'emblem' | 'text';
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   videoElementRef?: React.RefObject<HTMLVideoElement | null>;
 }
@@ -74,12 +76,31 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
   showReference,
   showBismillah,
   bismillahStyle,
+  watermarkEnabled = true,
+  watermarkStyle = 'badge',
   canvasRef,
   videoElementRef,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageElementRef = useRef<HTMLImageElement | null>(null);
+  const watermarkBadgeRef = useRef<HTMLImageElement | null>(null);
+  const watermarkIconRef = useRef<HTMLImageElement | null>(null);
   const particlesRef = useRef<Particle[]>([]);
+
+  // Preload branding watermark images
+  useEffect(() => {
+    const badge = new Image();
+    badge.src = '/branding-watermark-badge.png';
+    badge.onload = () => {
+      watermarkBadgeRef.current = badge;
+    };
+
+    const icon = new Image();
+    icon.src = '/branding-logo.png';
+    icon.onload = () => {
+      watermarkIconRef.current = icon;
+    };
+  }, []);
 
   const config = VIDEO_RATIO_CONFIGS[aspectRatio] || VIDEO_RATIO_CONFIGS['9:16'];
   const canvasWidth = config.width;
@@ -504,6 +525,40 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
         ctx.restore();
       }
 
+      // 9. Hadith of the Moment Watermark Layer
+      if (watermarkEnabled) {
+        ctx.save();
+        if (watermarkStyle === 'text') {
+          const wmSize = Math.max(16, (canvasWidth / 1080) * 24);
+          ctx.font = `700 ${wmSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.9)';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 8;
+          ctx.fillText('HADITH OF THE MOMENT', canvasWidth / 2, canvasHeight * 0.045);
+        } else if (watermarkStyle === 'emblem' && watermarkIconRef.current && watermarkIconRef.current.complete) {
+          ctx.globalAlpha = 0.92;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+          ctx.shadowBlur = 10;
+          const iconSize = (canvasWidth / 1080) * 80;
+          const iconX = (canvasWidth - iconSize) / 2;
+          const iconY = canvasHeight * 0.035;
+          ctx.drawImage(watermarkIconRef.current, iconX, iconY, iconSize, iconSize);
+        } else if (watermarkBadgeRef.current && watermarkBadgeRef.current.complete) {
+          // Standard pill badge
+          ctx.globalAlpha = 0.92;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+          ctx.shadowBlur = 10;
+          const badgeImg = watermarkBadgeRef.current;
+          const badgeW = (canvasWidth / 1080) * 290;
+          const badgeH = badgeW * (badgeImg.naturalHeight / badgeImg.naturalWidth);
+          const badgeX = (canvasWidth - badgeW) / 2;
+          const badgeY = canvasHeight * 0.032;
+          ctx.drawImage(badgeImg, badgeX, badgeY, badgeW, badgeH);
+        }
+        ctx.restore();
+      }
+
       // Continue loop if playing or animate particles
       animationFrameId = requestAnimationFrame(renderFrame);
     };
@@ -541,6 +596,8 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
     showReference,
     showBismillah,
     bismillahStyle,
+    watermarkEnabled,
+    watermarkStyle,
     canvasWidth,
     canvasHeight,
   ]);
