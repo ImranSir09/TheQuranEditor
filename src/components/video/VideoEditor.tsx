@@ -28,6 +28,7 @@ import { VideoTimeline } from './VideoTimeline';
 import { VideoToolbar } from './VideoToolbar';
 import { VideoBottomSheet, VideoToolTab } from './VideoBottomSheet';
 import { VideoExportModal } from './VideoExportModal';
+import fixWebmDuration from 'fix-webm-duration';
 import SurahSelector from '../SurahSelector';
 import { 
   triggerHaptic, 
@@ -632,6 +633,9 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
       const { mimeType, extension } = getVideoExportMimeType();
       setExportedExtension(extension);
 
+      const exportDuration = Math.max(3, duration);
+      const exportTotalMs = exportDuration * 1000;
+
       const recorder = new MediaRecorder(combinedStream, {
         mimeType,
         videoBitsPerSecond: quality === '1080p' ? 6000000 : 3500000,
@@ -652,10 +656,18 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
         showToast('Video recording encountered an error');
       };
 
-      recorder.onstop = () => {
-        const blob = new Blob(chunks, { type: mimeType });
-        const videoUrl = URL.createObjectURL(blob);
-        setExportedBlob(blob);
+      recorder.onstop = async () => {
+        let finalBlob = new Blob(chunks, { type: mimeType });
+        if (mimeType.includes('webm')) {
+          try {
+            // Fix WebM EBML duration header so video players report full duration and allow seeking
+            finalBlob = await fixWebmDuration(finalBlob, exportTotalMs);
+          } catch (fixErr) {
+            console.warn('WebM duration metadata fix error:', fixErr);
+          }
+        }
+        const videoUrl = URL.createObjectURL(finalBlob);
+        setExportedBlob(finalBlob);
         setExportedVideoUrl(videoUrl);
         setIsExporting(false);
         setExportProgress(100);
@@ -687,9 +699,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
       }
       setIsPlaying(true);
 
-      const exportDuration = Math.max(3, duration);
       const exportStartTime = Date.now();
-      const exportTotalMs = exportDuration * 1000;
 
       if (exportIntervalRef.current) {
         clearInterval(exportIntervalRef.current);
