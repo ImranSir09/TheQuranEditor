@@ -303,7 +303,7 @@ export default function QuranGenerator() {
       fontEmbedCSS,
       cacheBust: true,
       style: {
-        borderRadius: '0px',
+        borderRadius: borderStyle === 'rounded' ? '24px' : '0px',
       },
     };
 
@@ -563,7 +563,9 @@ export default function QuranGenerator() {
         <div 
           onClick={(e) => e.stopPropagation()}
           style={cardDimensions}
-          className="shadow-2xl rounded-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 relative select-none shrink-0"
+          className={`shadow-2xl overflow-hidden flex flex-col justify-between transition-all duration-300 relative select-none shrink-0 ${
+            borderStyle === 'rounded' ? 'rounded-2xl sm:rounded-3xl' : 'rounded-none'
+          }`}
         >
           <QuranCard
             ref={previewRef}

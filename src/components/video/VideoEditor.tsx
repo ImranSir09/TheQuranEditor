@@ -71,6 +71,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
   const [bgOverlayOpacity, setBgOverlayOpacity] = useState<number>(0.2);
   const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
   const [customBgType, setCustomBgType] = useState<'image' | 'video' | null>(null);
+  const [canvasCorners, setCanvasCorners] = useState<'sharp' | 'rounded'>('sharp');
   const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null);
   const [customAudioName, setCustomAudioName] = useState<string | null>(null);
 
@@ -312,8 +313,8 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
       const relativeTime = Math.max(0, audio.currentTime - clipOffsetSeconds);
       setCurrentTime(relativeTime);
 
-      // Loop back if reached end of selected clip
-      if (relativeTime >= duration && duration > 0) {
+      // Loop back if reached end of selected clip (only in preview mode, not while exporting)
+      if (!isExporting && relativeTime >= duration && duration > 0) {
         audio.currentTime = clipOffsetSeconds;
         setCurrentTime(0);
       }
@@ -355,7 +356,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
         const rel = Math.max(0, audio.currentTime - clipOffsetSeconds);
         setCurrentTime(rel);
 
-        if (rel >= duration && duration > 0) {
+        if (!isExporting && rel >= duration && duration > 0) {
           audio.currentTime = clipOffsetSeconds;
           setCurrentTime(0);
         }
@@ -463,6 +464,15 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
     const objectUrl = URL.createObjectURL(file);
     setCustomAudioUrl(objectUrl);
     setCustomAudioName(file.name);
+
+    // Compute duration from custom audio metadata
+    const tempAudio = new Audio(objectUrl);
+    tempAudio.addEventListener('loadedmetadata', () => {
+      if (tempAudio.duration && !isNaN(tempAudio.duration) && isFinite(tempAudio.duration)) {
+        setDuration(Math.max(3, tempAudio.duration));
+        setClipOffsetSeconds(0);
+      }
+    });
     showToast('Loaded custom recitation audio');
   };
 
@@ -521,6 +531,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
       animationType,
       wordHighlightColor,
       showTranslation,
+      canvasCorners,
     };
     setUndoStack((prev) => [...prev.slice(-15), snapshot]);
     setRedoStack([]);
@@ -532,7 +543,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
     const newUndo = undoStack.slice(0, -1);
     setRedoStack((prev) => [
       ...prev,
-      { aspectRatio, themeId, arabicFont, arabicFontSize, animationType, wordHighlightColor, showTranslation },
+      { aspectRatio, themeId, arabicFont, arabicFontSize, animationType, wordHighlightColor, showTranslation, canvasCorners },
     ]);
     setUndoStack(newUndo);
 
@@ -543,6 +554,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
     setAnimationType(previous.animationType);
     setWordHighlightColor(previous.wordHighlightColor);
     setShowTranslation(previous.showTranslation);
+    if ((previous as any).canvasCorners) setCanvasCorners((previous as any).canvasCorners);
     showToast('Action undone');
   };
 
@@ -552,7 +564,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
     const newRedo = redoStack.slice(0, -1);
     setUndoStack((prev) => [
       ...prev,
-      { aspectRatio, themeId, arabicFont, arabicFontSize, animationType, wordHighlightColor, showTranslation },
+      { aspectRatio, themeId, arabicFont, arabicFontSize, animationType, wordHighlightColor, showTranslation, canvasCorners },
     ]);
     setRedoStack(newRedo);
 
@@ -563,6 +575,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
     setAnimationType(next.animationType);
     setWordHighlightColor(next.wordHighlightColor);
     setShowTranslation(next.showTranslation);
+    if ((next as any).canvasCorners) setCanvasCorners((next as any).canvasCorners);
     showToast('Action redone');
   };
 
@@ -649,15 +662,34 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
         showToast('Video compiled successfully!');
       };
 
-      // Reset audio to start and start recording
-      audio.currentTime = clipOffsetSeconds;
+      // Ensure audio is paused before resetting
+      audio.pause();
+      setIsPlaying(false);
+
+      // Seek audio to start of clip and wait for seeked event or safety timeout
+      await new Promise<void>((resolve) => {
+        const onSeeked = () => {
+          audio.removeEventListener('seeked', onSeeked);
+          resolve();
+        };
+        audio.addEventListener('seeked', onSeeked, { once: true });
+        audio.currentTime = clipOffsetSeconds;
+        setTimeout(resolve, 350);
+      });
+
+      // Start recording with 500ms timeslice chunks
       recorder.start(500);
 
-      audio.play().catch((err) => console.warn('Export play error:', err));
+      try {
+        await audio.play();
+      } catch (err) {
+        console.warn('Export play error:', err);
+      }
       setIsPlaying(true);
 
+      const exportDuration = Math.max(3, duration);
       const exportStartTime = Date.now();
-      const exportTotalMs = duration * 1000;
+      const exportTotalMs = exportDuration * 1000;
 
       if (exportIntervalRef.current) {
         clearInterval(exportIntervalRef.current);
@@ -665,10 +697,17 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
 
       exportIntervalRef.current = setInterval(() => {
         const elapsed = Date.now() - exportStartTime;
-        const pct = Math.min(96, Math.round((elapsed / exportTotalMs) * 100));
+        const pct = Math.min(98, Math.max(4, Math.round((elapsed / exportTotalMs) * 100)));
         setExportProgress(pct);
 
-        if (elapsed >= exportTotalMs || audio.currentTime >= clipOffsetSeconds + duration) {
+        // Terminate only after the full export duration has elapsed, or if audio ended after 85%+ duration
+        const hasFinishedDuration = elapsed >= exportTotalMs;
+        const hasFinishedAudio =
+          elapsed >= exportTotalMs * 0.85 &&
+          !audio.seeking &&
+          audio.currentTime >= clipOffsetSeconds + exportDuration;
+
+        if (hasFinishedDuration || hasFinishedAudio) {
           if (exportIntervalRef.current) {
             clearInterval(exportIntervalRef.current);
             exportIntervalRef.current = null;
@@ -679,7 +718,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
             recorder.stop();
           }
         }
-      }, 250);
+      }, 200);
 
       mediaRecorderRef.current = recorder;
     } catch (err: any) {
@@ -835,6 +874,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
           bismillahStyle={bismillahStyle}
           watermarkEnabled={watermarkEnabled}
           watermarkStyle={watermarkStyle}
+          canvasCorners={canvasCorners}
           canvasRef={canvasRef}
           videoElementRef={customVideoRef}
         />
@@ -923,6 +963,19 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
       <VideoBottomSheet
         activeTab={activeTool}
         onClose={() => setActiveTool('none')}
+        selectedSurah={selectedSurah}
+        startAyah={startAyah}
+        setStartAyah={(a) => {
+          pushStateToUndo();
+          setStartAyah(a);
+        }}
+        endAyah={endAyah}
+        setEndAyah={(a) => {
+          pushStateToUndo();
+          setEndAyah(a);
+        }}
+        duration={duration}
+        onOpenSurahModal={() => setIsSurahModalOpen(true)}
         arabicFont={arabicFont}
         setArabicFont={(f) => {
           pushStateToUndo();
@@ -977,6 +1030,11 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({ initialSurah, isActive
         setWatermarkEnabled={setWatermarkEnabled}
         watermarkStyle={watermarkStyle}
         setWatermarkStyle={setWatermarkStyle}
+        canvasCorners={canvasCorners}
+        setCanvasCorners={(c) => {
+          pushStateToUndo();
+          setCanvasCorners(c);
+        }}
       />
 
       {/* Surah Selector Modal (Reused existing component) */}

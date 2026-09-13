@@ -34,6 +34,7 @@ interface VideoPreviewCanvasProps {
   bismillahStyle: string;
   watermarkEnabled?: boolean;
   watermarkStyle?: 'badge' | 'emblem' | 'text';
+  canvasCorners?: 'sharp' | 'rounded';
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   videoElementRef?: React.RefObject<HTMLVideoElement | null>;
 }
@@ -78,6 +79,7 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
   bismillahStyle,
   watermarkEnabled = true,
   watermarkStyle = 'badge',
+  canvasCorners = 'sharp',
   canvasRef,
   videoElementRef,
 }) => {
@@ -668,7 +670,9 @@ export const VideoPreviewCanvas: React.FC<VideoPreviewCanvasProps> = ({
       className="w-full h-full flex items-center justify-center p-2 sm:p-4 select-none relative overflow-hidden"
     >
       <div
-        className={`relative max-w-full max-h-full shadow-2xl rounded-xl overflow-hidden border border-slate-700/60 flex items-center justify-center bg-black ${config.aspectClass}`}
+        className={`relative max-w-full max-h-full shadow-2xl overflow-hidden border border-slate-700/60 flex items-center justify-center bg-black transition-all duration-200 ${
+          canvasCorners === 'rounded' ? 'rounded-2xl' : 'rounded-none'
+        } ${config.aspectClass}`}
         style={{
           aspectRatio: `${config.width} / ${config.height}`,
           height: aspectRatio === '9:16' ? '100%' : 'auto',

@@ -271,10 +271,20 @@ export const VideoExportModal: React.FC<VideoExportModalProps> = ({
 
               {/* Video Info Pill */}
               <div className="flex items-center justify-between text-xs text-slate-400 p-2.5 rounded-xl bg-slate-950 border border-slate-800">
-                <span>Aspect Ratio: <strong className="text-slate-200">{aspectRatio}</strong></span>
-                <span>Duration: <strong className="text-slate-200">~{Math.round(duration)}s</strong></span>
-                <span>Verses: <strong className="text-slate-200">{ayahs.length}</strong></span>
+                <span>Aspect: <strong className="text-slate-200">{aspectRatio}</strong></span>
+                <span>Duration: <strong className="text-emerald-400 font-mono">~{Math.round(duration)}s</strong></span>
+                <span>Verses: <strong className="text-slate-200">{ayahs.length} ({startAyah}–{endAyah})</strong></span>
               </div>
+
+              {/* Short duration notice if 1 short ayah is selected */}
+              {duration <= 4 && (
+                <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-400 mt-0.5" />
+                  <div className="text-[11px] leading-relaxed">
+                    <span className="font-semibold text-amber-200">Short Duration:</span> Only {ayahs.length} verse selected (~{Math.round(duration)}s recitation). To export a longer video (e.g., 30s–60s), expand the verse range in the <strong>Script</strong> tab or pick multiple ayahs.
+                  </div>
+                </div>
+              )}
 
               {/* Start Export Button */}
               <button

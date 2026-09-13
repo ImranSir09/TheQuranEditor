@@ -13,17 +13,32 @@ import {
   AlignRight,
   AlignCenter,
   Eye,
-  Activity
+  Activity,
+  BookOpen,
+  ChevronRight,
+  Clock,
+  Square
 } from 'lucide-react';
+import { SurahInfo } from '../../types';
 import { VideoBackgroundTheme, TextAnimationType, Reciter } from '../../types/video';
 import { VIDEO_BG_THEMES, RECITERS } from '../../constants/videoData';
 import { triggerHaptic } from '../../utils/native';
+import { formatTime } from '../../utils/videoAudio';
 
 export type VideoToolTab = 'none' | 'text' | 'animation' | 'background' | 'audio' | 'translation';
 
 interface VideoBottomSheetProps {
   activeTab: VideoToolTab;
   onClose: () => void;
+  // Verse & Surah Selection
+  selectedSurah?: SurahInfo | null;
+  startAyah?: number;
+  setStartAyah?: (ayah: number) => void;
+  endAyah?: number;
+  setEndAyah?: (ayah: number) => void;
+  duration?: number;
+  onOpenSurahModal?: () => void;
+
   // Text Props
   arabicFont: string;
   setArabicFont: (font: string) => void;
@@ -55,6 +70,8 @@ interface VideoBottomSheetProps {
   customBgType: 'image' | 'video' | null;
   onUploadCustomBg: (file: File) => void;
   onClearCustomBg: () => void;
+  canvasCorners?: 'sharp' | 'rounded';
+  setCanvasCorners?: (corners: 'sharp' | 'rounded') => void;
 
   // Audio Props
   currentReciterId: number;
@@ -93,6 +110,13 @@ const HIGHLIGHT_COLORS = [
 export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
   activeTab,
   onClose,
+  selectedSurah,
+  startAyah = 1,
+  setStartAyah,
+  endAyah = 7,
+  setEndAyah,
+  duration = 10,
+  onOpenSurahModal,
   arabicFont,
   setArabicFont,
   arabicFontSize,
@@ -119,6 +143,8 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
   customBgType,
   onUploadCustomBg,
   onClearCustomBg,
+  canvasCorners = 'sharp',
+  setCanvasCorners,
   currentReciterId,
   setReciterId,
   waveformEnabled,
@@ -204,6 +230,167 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
         {/* TAB 1: TEXT & CALLIGRAPHY */}
         {activeTab === 'text' && (
           <>
+            {/* Surah & Verse Range Selector */}
+            {selectedSurah && setStartAyah && setEndAyah && (
+              <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="font-semibold text-xs text-white">
+                      Surah {selectedSurah.englishName}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      ({selectedSurah.numberOfAyahs} ayahs)
+                    </span>
+                  </div>
+                  {onOpenSurahModal && (
+                    <button
+                      onClick={() => {
+                        triggerHaptic();
+                        onOpenSurahModal();
+                      }}
+                      className="text-[10px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-0.5 transition"
+                    >
+                      Change Surah <ChevronRight className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Verse Range Steppers */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">Start:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        disabled={startAyah <= 1}
+                        onClick={() => {
+                          triggerHaptic();
+                          const n = Math.max(1, startAyah - 1);
+                          setStartAyah(n);
+                          if (endAyah < n) setEndAyah(n);
+                        }}
+                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white font-bold flex items-center justify-center transition"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono text-xs font-bold text-emerald-400 w-6 text-center">
+                        {startAyah}
+                      </span>
+                      <button
+                        disabled={startAyah >= selectedSurah.numberOfAyahs}
+                        onClick={() => {
+                          triggerHaptic();
+                          const n = Math.min(selectedSurah.numberOfAyahs, startAyah + 1);
+                          setStartAyah(n);
+                          if (endAyah < n) setEndAyah(n);
+                        }}
+                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white font-bold flex items-center justify-center transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900/80 p-2 rounded-lg border border-slate-800 flex items-center justify-between">
+                    <span className="text-[11px] text-slate-400">End:</span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        disabled={endAyah <= startAyah}
+                        onClick={() => {
+                          triggerHaptic();
+                          setEndAyah(Math.max(startAyah, endAyah - 1));
+                        }}
+                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white font-bold flex items-center justify-center transition"
+                      >
+                        -
+                      </button>
+                      <span className="font-mono text-xs font-bold text-emerald-400 w-6 text-center">
+                        {endAyah}
+                      </span>
+                      <button
+                        disabled={endAyah >= selectedSurah.numberOfAyahs}
+                        onClick={() => {
+                          triggerHaptic();
+                          setEndAyah(Math.min(selectedSurah.numberOfAyahs, endAyah + 1));
+                        }}
+                        className="w-6 h-6 rounded bg-slate-800 hover:bg-slate-700 disabled:opacity-30 text-white font-bold flex items-center justify-center transition"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Presets & Live Duration Indicator */}
+                <div className="flex items-center justify-between pt-1">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        triggerHaptic();
+                        setStartAyah(1);
+                        setEndAyah(1);
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                        startAyah === 1 && endAyah === 1
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      Ayah 1
+                    </button>
+                    <button
+                      onClick={() => {
+                        triggerHaptic();
+                        setStartAyah(1);
+                        setEndAyah(Math.min(3, selectedSurah.numberOfAyahs));
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                        startAyah === 1 && endAyah === Math.min(3, selectedSurah.numberOfAyahs) && selectedSurah.numberOfAyahs > 1
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      1–{Math.min(3, selectedSurah.numberOfAyahs)}
+                    </button>
+                    {selectedSurah.numberOfAyahs > 3 && (
+                      <button
+                        onClick={() => {
+                          triggerHaptic();
+                          setStartAyah(1);
+                          setEndAyah(Math.min(7, selectedSurah.numberOfAyahs));
+                        }}
+                        className={`px-2 py-0.5 rounded text-[10px] font-medium transition ${
+                          startAyah === 1 && endAyah === Math.min(7, selectedSurah.numberOfAyahs)
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        1–{Math.min(7, selectedSurah.numberOfAyahs)}
+                      </button>
+                    )}
+                    {selectedSurah.numberOfAyahs > 7 && (
+                      <button
+                        onClick={() => {
+                          triggerHaptic();
+                          setStartAyah(1);
+                          setEndAyah(Math.min(12, selectedSurah.numberOfAyahs));
+                        }}
+                        className="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 hover:text-white transition"
+                      >
+                        1–{Math.min(12, selectedSurah.numberOfAyahs)}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Recitation Duration Badge */}
+                  <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/60 px-2 py-0.5 rounded-md border border-emerald-800/60">
+                    <Clock className="w-3 h-3 text-emerald-400" />
+                    <span>~{Math.round(duration)}s</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Arabic Font Selection */}
             <div>
               <label className="block text-[11px] font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
@@ -600,6 +787,48 @@ export const VideoBottomSheet: React.FC<VideoBottomSheetProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Canvas Corners (Angles) Option */}
+            {setCanvasCorners && (
+              <div className="pt-3 border-t border-slate-800">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="font-semibold text-xs text-slate-200 block">Canvas Corners (Angles)</span>
+                    <span className="text-[10px] text-slate-400">Standard 90° square angles or rounded frame preview</span>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      triggerHaptic();
+                      setCanvasCorners('sharp');
+                    }}
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition flex items-center justify-center gap-1.5 ${
+                      canvasCorners === 'sharp'
+                        ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300 font-bold ring-1 ring-emerald-500/30'
+                        : 'border-slate-800 bg-slate-800/60 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <Square className="w-3.5 h-3.5" />
+                    <span>Sharp Angles (90° Square)</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      triggerHaptic();
+                      setCanvasCorners('rounded');
+                    }}
+                    className={`py-2 px-3 rounded-xl border text-xs font-medium transition flex items-center justify-center gap-1.5 ${
+                      canvasCorners === 'rounded'
+                        ? 'border-emerald-500 bg-emerald-500/15 text-emerald-300 font-bold ring-1 ring-emerald-500/30'
+                        : 'border-slate-800 bg-slate-800/60 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Rounded Angles</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </>
         )}
 
